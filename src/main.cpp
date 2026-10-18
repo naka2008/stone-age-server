@@ -24,6 +24,7 @@
 #include <csignal>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -483,6 +484,23 @@ int main(int argc, char **argv)
 		{
 			std::fprintf(stderr, "Playable startup failed: %s\n", error.what());
 			return 1;
+		}
+	}
+	else if (!self_test)
+	{
+		storage = SA::SessionStorage::createMemoryStorage();
+		try
+		{
+			std::string content_dir = "content/p2-v1";
+			if (!std::filesystem::exists(content_dir + "/manifest.json"))
+				content_dir = "../stone-age-server/content/p2-v1";
+			if (std::filesystem::exists(content_dir + "/manifest.json"))
+			{
+				content = std::make_unique<SA::Content::Bundle>(SA::Content::load(content_dir, false));
+			}
+		}
+		catch (...)
+		{
 		}
 	}
 	const std::uint16_t port =

@@ -74,5 +74,6 @@ class Service
 std::unique_ptr<Service> open(const Settings &settings, std::string &error);
 bool loadSettingsFile(const std::string &path, Settings &settings, std::string &error);
 bool validRecord(const SA::Domain::CharacterRecord &record);
+std::unique_ptr<Service> createMemoryStorage();
 } // namespace SA::SessionStorage
 #endif

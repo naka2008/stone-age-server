@@ -85,4 +85,147 @@ bool validRecord(const SA::Domain::CharacterRecord &record)
 			return false;
 	return true;
 }
+
+class MemoryStorage final : public Service
+{
+	struct AccountData
+	{
+		std::string password;
+		std::vector<std::uint64_t> char_ids;
+	};
+	std::unordered_map<std::string, AccountData> accounts_;
+	std::unordered_map<std::uint64_t, SA::Domain::CharacterRecord> characters_;
+	std::uint64_t next_char_id_ = 1000;
+	std::vector<Completion> completions_;
+
+  public:
+	MemoryStorage()
+	{
+		AccountData test_acc;
+		test_acc.password = "stoneage123456";
+		const std::uint64_t cid = 1001;
+		test_acc.char_ids.push_back(cid);
+		accounts_["tester"] = test_acc;
+
+		SA::Domain::CharacterRecord test_char{};
+		test_char.schema_ver = 1;
+		test_char.char_id = cid;
+		test_char.revision = 1;
+		(void)test_char.player.name.assign("石器探索者");
+		test_char.player.level = 1;
+		test_char.player.hp = 100;
+		test_char.player.mp = test_char.player.max_mp = 100;
+		test_char.player.vital = 100;
+		test_char.player.str = 100;
+		test_char.player.tough = 100;
+		test_char.player.dex = 100;
+		test_char.player.earth = 5;
+		test_char.player.water = 5;
+		test_char.player.image = 100000;
+		test_char.player.face_image = 30000;
+		test_char.player.floor = 100;
+		test_char.player.x = 20;
+		test_char.player.y = 20;
+		test_char.player.dir = 5;
+		test_char.player.default_pet = 0;
+
+		SA::Domain::PetSlot pet{};
+		pet.slot = 0;
+		pet.uid = 101;
+		pet.value.base_image = 100054;
+		pet.value.level = 1;
+		pet.value.hp = 30;
+		pet.value.vital = 10;
+		pet.value.str = 8;
+		pet.value.tough = 6;
+		pet.value.dex = 5;
+		pet.value.earth = 3;
+		pet.value.fire = 7;
+		(void)pet.value.name.assign("乌力");
+		(void)test_char.pets.push_back(pet);
+
+		characters_[cid] = test_char;
+	}
+
+	bool submit(Request req) override
+	{
+		Completion c{};
+		c.operation = req.operation;
+		c.session = req.session;
+		c.correlation = req.correlation;
+		c.logout = req.logout;
+		c.code = SA::Transport::AccountCode::ACCOUNT_OK;
+
+		if (req.operation == Operation::kLogin)
+		{
+			const std::string login_str = req.login.login.c_str();
+			const std::string pwd_str = req.login.password.c_str();
+			auto it = accounts_.find(login_str);
+			if (it == accounts_.end())
+			{
+				AccountData new_acc;
+				new_acc.password = pwd_str;
+				accounts_[login_str] = new_acc;
+				it = accounts_.find(login_str);
+			}
+			for (std::uint64_t cid : it->second.char_ids)
+			{
+				auto cit = characters_.find(cid);
+				if (cit != characters_.end())
+				{
+					SA::Transport::CharacterSummary sum{};
+					sum.char_id = cit->second.char_id;
+					sum.level = cit->second.player.level;
+					sum.image = cit->second.player.image;
+					(void)sum.name.assign(cit->second.player.name.c_str());
+					(void)c.characters.push_back(sum);
+				}
+			}
+		}
+		else if (req.operation == Operation::kCreate)
+		{
+			const std::uint64_t new_id = ++next_char_id_;
+			req.character.char_id = new_id;
+			req.character.schema_ver = 1;
+			characters_[new_id] = req.character;
+			c.character = req.character;
+		}
+		else if (req.operation == Operation::kSelect)
+		{
+			auto cit = characters_.find(req.character.char_id);
+			if (cit != characters_.end())
+			{
+				c.character = cit->second;
+			}
+			else
+			{
+				c.code = SA::Transport::AccountCode::ACCOUNT_UNAVAILABLE;
+			}
+		}
+		else if (req.operation == Operation::kSave)
+		{
+			characters_[req.character.char_id] = req.character;
+			c.character = req.character;
+		}
+		completions_.push_back(std::move(c));
+		return true;
+	}
+
+	std::vector<Completion> poll() override
+	{
+		auto out = std::move(completions_);
+		completions_.clear();
+		return out;
+	}
+
+	bool idle() const override
+	{
+		return completions_.empty();
+	}
+};
+
+std::unique_ptr<Service> createMemoryStorage()
+{
+	return std::make_unique<MemoryStorage>();
+}
 } // namespace SA::SessionStorage
