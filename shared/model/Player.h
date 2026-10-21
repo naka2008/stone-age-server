@@ -72,6 +72,14 @@ struct Player
 	//      没有任何一处会报错。★ ModelPoolTest 有一条用例专门钉这个后果。
 	std::array<EntityHandle, kMaxPetHave> pets{};
 
+	// ── 宠物寄放池 (原 indexOfPoolPet[CHAR_MAXPOOLPETHAVE], npc_petshop.c) ──
+	//
+	// ★ #48：宠物店寄放/领取功能。原版 CHAR_MAXPOOLPETHAVE=15（或 10）。
+	//   寄放费用 = 50 + 玩家等级×4（原 NPC_GETPOOLCOST）。
+	//   与 pets[] 同一条纪律：存句柄，释放时必须同步清理。
+	static constexpr std::size_t kMaxPoolPetHave = 15;
+	std::array<EntityHandle, kMaxPoolPetHave> pool_pets{};
+
 	// ── 背包 / 装备槽(原 `indexOfExistItems[CHAR_MAXITEMHAVE]`,批次 I.1)──────
 	//
 	// ★ 与 `pets[]` 完全同一条纪律:存**句柄**(带 generation,M10)而不是池下标 ——

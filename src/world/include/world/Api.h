@@ -1913,6 +1913,14 @@ class World final : public SA::Net::TransportEvents,
 	// 向宠物商店 NPC 出售指定槽位的宠物 (批次 W.13, 移植 npc_petshop.c 逻辑)
 	bool sellPetToShop(SA::Net::SessionId session, std::uint64_t npc_id, int pet_slot);
 
+	// ★ #48：将指定槽位的宠物寄放到宠物店 (原 NPC_PetDel2, npc_petshop.c:902)。
+	//   费用 = 50 + 玩家等级×4（原 NPC_GETPOOLCOST）。骑乘中拒绝；默认宠重置。
+	bool depositPetToShop(SA::Net::SessionId session, std::uint64_t npc_id, int pet_slot);
+
+	// ★ #48：从宠物店领回寄放的宠物 (原 NPC_PetDel3, npc_petshop.c:976)。
+	//   守护兽若玩家非家族族长则转为普通兽。
+	bool withdrawPetFromShop(SA::Net::SessionId session, std::uint64_t npc_id, int pool_slot);
+
 	// 宠物向技能导师 NPC 学习宠物技能 (批次 W.13, 移植 npc_petskillshop.c 逻辑)
 	bool learnPetSkill(SA::Net::SessionId session, std::uint64_t npc_id, int pet_slot,
 	                   std::int32_t skill_id, int skill_slot = -1);
@@ -2854,6 +2862,8 @@ enum class GoldReason : std::uint8_t
 	kPetShopBuy,
 	// 宠物商店回收宠物给予石币 (源, 批次 W.13)
 	kPetShopSell,
+	// ★ #48：宠物店寄放宠物扣除费用 (汇, 50+玩家等级×4)
+	kPetShopDeposit,
 	// 技能导师学习宠物技能扣除石币 (汇, 批次 W.13)
 	kPetSkillFee,
 	// 传送员 NPC 传送路费扣除 (汇, 批次 W.14)

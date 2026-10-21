@@ -73,7 +73,7 @@
 
 | **46** | ✅ ~~🏪 **宠物店卖宠价格公式与原版完全不同**~~ ⇒ **2026-10-22 已修复** | 新增纯函数 `SA::Rules::computePetSellPrice`（`shared/rules/Progression.h/.cpp`），1:1 移植 `NPC_GetCost`（npc_petshop.c:706-830）：level²×10、getlevel 二次项（转生按 10）、rare 映射、普通/特殊 rate、魅力修正。`sellPetToShop` 改调。注：Pet 暂无 transmigration/rare/WORKFIXAI 字段，调用方传 0。 |
 | **47** | ✅ ~~🏪 **宠物店卖宠缺少原版特殊规则检查**~~ ⇒ **2026-10-22 已完全修复** | ①守护兽拒绝：Pet 新增 `pet_family` 字段（原 CHAR_PETFAMILY），==1 时拒绝；②骑乘中拒绝（不再自动下骑）；③出售默认宠重置 `default_pet=-1`；④战斗中检查：Player 无 battle_mode 字段，但战斗中无法与 NPC 交互，此门不可达，记为已知缺口。 |
-| **48** | 🏪 **宠物寄放/领取/仓库功能未实现**(新增 2026-10-22,校准审查第6轮) | 原版 npc_petshop.c 有完整寄放链：寄放（NPC_PetDel2，费用 50+LV×4）、领取（NPC_PetDel3）、仓库（NPC_DepotPet_*）。实现完全没有。属未实现功能，非已移植代码差异；待宠物仓库系统设计时一并考虑。 |
+| **48** | ✅ ~~🏪 **宠物寄放/领取/仓库功能未实现**~~ ⇒ **2026-10-22 已实现寄放/领取** | Player 新增 `pool_pets[15]`（原 `indexOfPoolPet[CHAR_MAXPOOLPETHAVE]`）；新增 `World::depositPetToShop`（原 `NPC_PetDel2`：骑乘中拒绝、默认宠重置、费用 50+玩家等级×4）和 `World::withdrawPetFromShop`（原 `NPC_PetDel3`：守护兽转普通兽）。仓库（`NPC_DepotPet_*`）为独立系统，仍未实现。 |
 | **49** | ✅ ~~🎓 **宠技店宠物等级门是实现自加的**~~ ⇒ **2026-10-22 已修复** | 去掉 `learnPetSkill` 的宠物等级门（8.0 常规版 `npc_petskillshop.c` 无此门槛）。 |
 | **50** | ✅ ~~🎓 **宠技店三处低优先级差异**~~ ⇒ **2026-10-22 已修复** | ①去掉重复学习拦截，允许覆盖（原版行为）；②去掉技能槽自动分配，无效槽位直接拒绝（原版要求客户端显式指定）；③去掉价格下限 `max(1,·)`，允许 0 价格（原版行为）。 |
 | **51** | ✅ ~~📝 **宠物店"买宠"为自主设计**~~ ⇒ **2026-10-22 注释已修正** | 原版 npc_petshop.c 无买宠功能。`buyPetFromShop` 的"移植 npc_petshop.c"注释已修正为"卖宠移植原版，买宠为自主设计"。功能保留（待设计决策是否移除）。 |

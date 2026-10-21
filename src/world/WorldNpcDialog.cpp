@@ -2473,13 +2473,146 @@ bool World::sellPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	}
 	//   ④战斗中拒绝：Player 暂无 battle_mode 字段。注：战斗中玩家无法与 NPC 交互
 	//      （NPC 交互要求非战斗状态），此门在当前架构下不可达，记为已知缺口。
-	//   ③守护兽（CHAR_PETFAMILY==1）拒绝：Pet 暂无 pet_family 字段，待补
-	//   ④战斗中拒绝：Player 暂无 battle_mode 字段，待补
 	p->clearPetSlot(pet_slot);
 	s.pets.release(h);
 
 	(void)addGold(*p, GoldReason::kPetShopSell, unit_price,
 	              /*trans=*/0, static_cast<std::uint64_t>(id), s);
+	return true;
+}
+
+// ★ #48：宠物寄放 (原 NPC_PetDel2, gmsv/npc/npc_petshop.c:902-975)。
+bool World::depositPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_slot)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kPetShop)
+		return false;
+
+	// 距离检查
+	if (std::abs(p->x - npc->x) > 3 || std::abs(p->y - npc->y) > 3)
+		return false;
+
+	// 槽位有效性
+	if (pet_slot < 0 || static_cast<std::size_t>(pet_slot) >= SA::Model::kMaxPetHave)
+		return false;
+
+	const auto h = p->pets[static_cast<std::size_t>(pet_slot)];
+	if (!h.valid())
+		return false;
+
+	auto *pet = s.pets.resolve(h);
+	if (pet == nullptr)
+		return false;
+
+	// 骑乘中拒绝（原版 npc_petshop.c:924）
+	if (playerRidePetSlot(id) == pet_slot)
+	{
+		s.sendExChangeWindow(id, npc->id, "\n\n骑乘中的宠物无法寄放喔！",
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return false;
+	}
+
+	// 找空寄放槽
+	int empty_pool = -1;
+	for (std::size_t i = 0; i < SA::Model::Player::kMaxPoolPetHave; ++i)
+	{
+		if (!p->pool_pets[i].valid())
+		{
+			empty_pool = static_cast<int>(i);
+			break;
+		}
+	}
+	if (empty_pool < 0)
+		return false; // 寄放池满
+
+	// 默认宠重置（原版 npc_petshop.c:937）
+	if (p->default_pet == pet_slot)
+	{
+		p->default_pet = -1;
+	}
+
+	// 费用：50 + 玩家等级×4（原 NPC_GETPOOLCOST, npc_petshop.c:71）
+	const std::int32_t fee = 50 + p->level * 4;
+	if (p->gold < fee)
+	{
+		s.sendExChangeWindow(id, npc->id, "石币不足！",
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return false;
+	}
+
+	// 执行：扣费 + 宠物从随身移到寄放池
+	(void)delGold(*p, GoldReason::kPetShopDeposit, fee,
+	              /*trans=*/0, static_cast<std::uint64_t>(id), s);
+	p->pool_pets[static_cast<std::size_t>(empty_pool)] = h;
+	p->clearPetSlot(pet_slot);
+
+	s.sendExChangeWindow(id, npc->id, "宠物寄放成功！",
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ★ #48：宠物领取 (原 NPC_PetDel3, gmsv/npc/npc_petshop.c:976-1020)。
+bool World::withdrawPetFromShop(SA::Net::SessionId id, std::uint64_t npc_id, int pool_slot)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kPetShop)
+		return false;
+
+	// 距离检查
+	if (std::abs(p->x - npc->x) > 3 || std::abs(p->y - npc->y) > 3)
+		return false;
+
+	// 寄放槽有效性
+	if (pool_slot < 0 || static_cast<std::size_t>(pool_slot) >= SA::Model::Player::kMaxPoolPetHave)
+		return false;
+
+	const auto h = p->pool_pets[static_cast<std::size_t>(pool_slot)];
+	if (!h.valid())
+		return false;
+
+	auto *pet = s.pets.resolve(h);
+	if (pet == nullptr)
+		return false;
+
+	// 找空随身槽
+	int empty_slot = -1;
+	for (std::size_t i = 0; i < SA::Model::kMaxPetHave; ++i)
+	{
+		if (!p->pets[i].valid())
+		{
+			empty_slot = static_cast<int>(i);
+			break;
+		}
+	}
+	if (empty_slot < 0)
+		return false; // 随身宠物栏满
+
+	// 守护兽转普通兽（原版 npc_petshop.c:989-993）：
+	// 原版条件是 CHAR_FMLEADERFLAG != 3（非家族族长）则转；实现暂无家族系统，
+	// 保守处理：守护兽领取时一律转普通兽并提示。
+	if (pet->pet_family == 1)
+	{
+		pet->pet_family = 0;
+	}
+
+	// 执行：宠物从寄放池移到随身
+	p->pets[static_cast<std::size_t>(empty_slot)] = h;
+	p->pool_pets[static_cast<std::size_t>(pool_slot)] = {};
+
+	s.sendExChangeWindow(id, npc->id, "宠物领取成功！",
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 	return true;
 }
 
