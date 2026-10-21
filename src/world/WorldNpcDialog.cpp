@@ -3615,10 +3615,10 @@ int World::gambleBankDoGold(SA::Net::SessionId id, int gold)
 			return 6;
 		if (withdraw + kFee > p->bank_gold)
 			return 2; // 银行存款不够 (含手续费)
-		// 直接调整 (银行账本 + 随身金币, 金额已验证)
+		// 银行账本直接扣 (非 GoldLedger 管辖), 随身金币走 addGold
 		// 原版: CHAR_setInt(CHAR_PERSONAGOLD, ...) + CHAR_AddGold(...)
 		p->bank_gold -= (withdraw + kFee);
-		p->gold += withdraw;
+		(void)addGold(*p, GoldReason::kGambleBankWithdraw, withdraw, /*trans=*/0, /*corr=*/0, s);
 		return 1;
 	}
 	else
@@ -3628,8 +3628,9 @@ int World::gambleBankDoGold(SA::Net::SessionId id, int gold)
 			return 2; // 随身金币不足
 		if (static_cast<std::int64_t>(p->bank_gold) + gold > kMaxBankGold)
 			return 4; // 银行将满
+		// 随身金币走 delGold, 银行账本直接加
 		// 原版: CHAR_DelGold(...) + CHAR_setInt(CHAR_PERSONAGOLD, ...)
-		p->gold -= gold;
+		(void)delGold(*p, GoldReason::kGambleBankDeposit, gold, /*trans=*/0, /*corr=*/0, s);
 		p->bank_gold += gold;
 		return 1;
 	}
