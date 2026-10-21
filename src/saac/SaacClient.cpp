@@ -231,6 +231,175 @@ std::uint64_t SaacClient::requestUnlock(const std::string & /*cdkey*/,
 	return req_id;
 }
 
+std::uint64_t SaacClient::requestCharDelete(const std::string & /*cdkey*/,
+                                            const std::string & /*password*/,
+                                            const std::string & /*charname*/,
+                                            const std::string & /*option*/,
+                                            CharDeleteCallback cb,
+                                            std::int64_t timeout_ms)
+{
+	// ★ #43：角色删除请求（原 saacproto_ACCharDelete_recv）。
+	//   当前为 stub：只注册 in-flight 跟踪，实际发包由传输层接线。
+	const std::uint64_t req_id = nextRequestId();
+	const std::int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+	                                std::chrono::steady_clock::now().time_since_epoch())
+	                                .count();
+
+	InFlightItem item;
+	item.envelope.instance_id = _instanceId;
+	item.envelope.generation = _generation.load(std::memory_order_relaxed);
+	item.envelope.request_id = req_id;
+	item.envelope.deadline_ms = timeout_ms;
+	item.expire_at_ms = now_ms + timeout_ms;
+	item.req_type = PacketType::kCharDeleteReq;
+
+	item.on_completion = [cb](SaacAccountStatus status, const std::vector<std::uint8_t> & /*payload*/)
+	{
+		if (cb)
+		{
+			cb(status, "");
+		}
+	};
+
+	item.on_timeout = [cb]()
+	{
+		if (cb)
+		{
+			cb(SaacAccountStatus::kTimeout, "");
+		}
+	};
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_inFlight.emplace(req_id, std::move(item));
+	}
+	return req_id;
+}
+
+std::uint64_t SaacClient::requestLockQuery(const std::string & /*cdkey*/,
+                                           LockCallback cb,
+                                           std::int64_t timeout_ms)
+{
+	// ★ #44：锁状态查询（原 saacproto_ACLock_recv lock=2）。
+	//   当前为 stub：只注册 in-flight 跟踪，实际发包由传输层接线。
+	const std::uint64_t req_id = nextRequestId();
+	const std::int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+	                                std::chrono::steady_clock::now().time_since_epoch())
+	                                .count();
+
+	InFlightItem item;
+	item.envelope.instance_id = _instanceId;
+	item.envelope.generation = _generation.load(std::memory_order_relaxed);
+	item.envelope.request_id = req_id;
+	item.envelope.deadline_ms = timeout_ms;
+	item.expire_at_ms = now_ms + timeout_ms;
+	item.req_type = PacketType::kLockReq; // lock=2 查询，与加锁共用包类型
+
+	item.on_completion = [cb](SaacAccountStatus status, const std::vector<std::uint8_t> & /*payload*/)
+	{
+		if (cb)
+		{
+			cb(status, "");
+		}
+	};
+
+	item.on_timeout = [cb]()
+	{
+		if (cb)
+		{
+			cb(SaacAccountStatus::kTimeout, "");
+		}
+	};
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_inFlight.emplace(req_id, std::move(item));
+	}
+	return req_id;
+}
+
+std::uint64_t SaacClient::requestGMUnlock(const std::string & /*cdkey*/,
+                                          LockCallback cb,
+                                          std::int64_t timeout_ms)
+{
+	// ★ #44：GM 强制解锁单个账号（原 saacproto_ACLock_recv lock=3）。
+	const std::uint64_t req_id = nextRequestId();
+	const std::int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+	                                std::chrono::steady_clock::now().time_since_epoch())
+	                                .count();
+
+	InFlightItem item;
+	item.envelope.instance_id = _instanceId;
+	item.envelope.generation = _generation.load(std::memory_order_relaxed);
+	item.envelope.request_id = req_id;
+	item.envelope.deadline_ms = timeout_ms;
+	item.expire_at_ms = now_ms + timeout_ms;
+	item.req_type = PacketType::kLockReq; // lock=3 GM 解锁，与加锁共用包类型
+
+	item.on_completion = [cb](SaacAccountStatus status, const std::vector<std::uint8_t> & /*payload*/)
+	{
+		if (cb)
+		{
+			cb(status, "");
+		}
+	};
+
+	item.on_timeout = [cb]()
+	{
+		if (cb)
+		{
+			cb(SaacAccountStatus::kTimeout, "");
+		}
+	};
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_inFlight.emplace(req_id, std::move(item));
+	}
+	return req_id;
+}
+
+std::uint64_t SaacClient::requestGMUnlockAll(const std::string & /*server_id*/,
+                                             LockCallback cb,
+                                             std::int64_t timeout_ms)
+{
+	// ★ #44：GM 解锁整个服务器（原 saacproto_ACLock_recv lock=4）。
+	const std::uint64_t req_id = nextRequestId();
+	const std::int64_t now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+	                                std::chrono::steady_clock::now().time_since_epoch())
+	                                .count();
+
+	InFlightItem item;
+	item.envelope.instance_id = _instanceId;
+	item.envelope.generation = _generation.load(std::memory_order_relaxed);
+	item.envelope.request_id = req_id;
+	item.envelope.deadline_ms = timeout_ms;
+	item.expire_at_ms = now_ms + timeout_ms;
+	item.req_type = PacketType::kLockReq; // lock=4 GM 全服解锁，与加锁共用包类型
+
+	item.on_completion = [cb](SaacAccountStatus status, const std::vector<std::uint8_t> & /*payload*/)
+	{
+		if (cb)
+		{
+			cb(status, "");
+		}
+	};
+
+	item.on_timeout = [cb]()
+	{
+		if (cb)
+		{
+			cb(SaacAccountStatus::kTimeout, "");
+		}
+	};
+
+	{
+		std::lock_guard<std::mutex> lock(_mutex);
+		_inFlight.emplace(req_id, std::move(item));
+	}
+	return req_id;
+}
+
 void SaacClient::setBroadcastSender(BroadcastSender sender)
 {
 	std::lock_guard<std::mutex> lock(_mutex);

@@ -62,6 +62,25 @@ class SaacClient : public ISaacClient
 	                            LockCallback cb,
 	                            std::int64_t timeout_ms = 5000) override;
 
+	std::uint64_t requestCharDelete(const std::string &cdkey,
+	                                const std::string &password,
+	                                const std::string &charname,
+	                                const std::string &option,
+	                                CharDeleteCallback cb,
+	                                std::int64_t timeout_ms = 5000) override;
+
+	std::uint64_t requestLockQuery(const std::string &cdkey,
+	                               LockCallback cb,
+	                               std::int64_t timeout_ms = 5000) override;
+
+	std::uint64_t requestGMUnlock(const std::string &cdkey,
+	                              LockCallback cb,
+	                              std::int64_t timeout_ms = 5000) override;
+
+	std::uint64_t requestGMUnlockAll(const std::string &server_id,
+	                                 LockCallback cb,
+	                                 std::int64_t timeout_ms = 5000) override;
+
 	std::uint64_t broadcastWorldMessage(int channel,
 	                                    const std::string &sender,
 	                                    const std::string &text,

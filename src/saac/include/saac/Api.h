@@ -54,6 +54,8 @@ enum class PacketType : std::uint16_t
 	kCharLoadResp = 0x0202,
 	kCharSaveReq = 0x0203,
 	kCharSaveResp = 0x0204,
+	kCharDeleteReq = 0x0205,  // ★ #43：原 saacproto_ACCharDelete_recv (saacproto_serv.h:56)
+	kCharDeleteResp = 0x0206, // ★ #43：原 saacproto_ACCharDelete_send (saacproto_serv.h:57)
 	kLockReq = 0x0301,
 	kLockResp = 0x0302,
 	kUnlockReq = 0x0303,
@@ -94,6 +96,9 @@ using CharSaveCallback = std::function<void(SaacAccountStatus status,
 using LockCallback = std::function<void(SaacAccountStatus status,
                                         const std::string &lease_token)>;
 
+using CharDeleteCallback = std::function<void(SaacAccountStatus status,
+                                              const std::string &result)>;
+
 using BroadcastCallback = std::function<void(bool success)>;
 
 // ── 跨线路广播事件消息 (8.0 独有进第一批, 对齐 00 §7) ───────────────
@@ -129,6 +134,10 @@ class ISaacClient
 	                                      int slot,
 	                                      CharLoadCallback cb,
 	                                      std::int64_t timeout_ms = 5000) = 0;
+	// ★ #45：原版 ACCharLoad（recv.c:102-106）内部先 sasql_query 验密，
+	//   失败则 sasql_register 自动注册新账号（WON 时代行为），无独立登录协议。
+	//   实现侧 requestLogin 为独立 stub；服务端实现账号逻辑时需决策：
+	//   保留自动注册（对齐原版）或改走显式注册流程。
 
 	virtual std::uint64_t requestCharSave(const std::string &cdkey,
 	                                      int slot,
@@ -147,6 +156,32 @@ class ISaacClient
 	                                    const std::string &lease_token,
 	                                    LockCallback cb,
 	                                    std::int64_t timeout_ms = 5000) = 0;
+
+	// ★ #43：角色删除（原 saacproto_ACCharDelete_recv, saacproto_serv.h:56）
+	virtual std::uint64_t requestCharDelete(const std::string &cdkey,
+	                                        const std::string &password,
+	                                        const std::string &charname,
+	                                        const std::string &option,
+	                                        CharDeleteCallback cb,
+	                                        std::int64_t timeout_ms = 5000) = 0;
+
+	// ★ #44：锁状态查询（原 saacproto_ACLock_recv lock=2, recv.c:341-348）
+	//   返回 "USRLOCKED:..." 或 "USRUNLOCKED:..."
+	virtual std::uint64_t requestLockQuery(const std::string &cdkey,
+	                                       LockCallback cb,
+	                                       std::int64_t timeout_ms = 5000) = 0;
+
+	// ★ #44：GM 强制解锁单个账号（原 saacproto_ACLock_recv lock=3, recv.c:349-356）
+	//   返回 "GMUNLOCKSUCCESS" 或 "GMUNLOCKFAIL"
+	virtual std::uint64_t requestGMUnlock(const std::string &cdkey,
+	                                      LockCallback cb,
+	                                      std::int64_t timeout_ms = 5000) = 0;
+
+	// ★ #44：GM 解锁整个服务器（原 saacproto_ACLock_recv lock=4, recv.c:357-360）
+	//   返回 "GMUNLOCKALL"
+	virtual std::uint64_t requestGMUnlockAll(const std::string &server_id,
+	                                         LockCallback cb,
+	                                         std::int64_t timeout_ms = 5000) = 0;
 
 	// 跨线路全服广播/聊天室 (8.0 独有进第一批)
 	virtual std::uint64_t broadcastWorldMessage(int channel,
