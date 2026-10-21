@@ -234,6 +234,41 @@ struct EquippedItemMods
 // items: 9 个装备槽的修正值数组（含空槽的零值项）；count: 槽位数。
 EquipModifiers computeEquipModifiers(const EquippedItemMods *items, std::size_t count) noexcept;
 
+// ── 套装加成 (批次 E.2) ─────────────────────────────────────────────
+//
+// 套装加成输入（原 CHAR_WORKSUITSTR/TOUGH/DEX/VIT/MODSTR + _P 百分比系列）。
+// ★ 8.0 全源码无写入点（连 ITEM_SUITCODE 都没人读）⇒ 实际恒为 0；
+//   本结构为 Other_DefcharWorkInt 应用逻辑的输入端，恒 0 时即恒等。
+struct SuitBonuses
+{
+	std::int32_t suit_str = 0;     // CHAR_WORKSUITSTR
+	std::int32_t suit_tough = 0;   // CHAR_WORKSUITTGH
+	std::int32_t suit_dex = 0;     // CHAR_WORKSUITDEX
+	std::int32_t suit_vit = 0;     // CHAR_WORKSUITVIT（加 MAXHP）
+	std::int32_t suit_mod_str = 0; // CHAR_WORKSUITMODSTR（百分比修正）
+	std::int32_t suit_str_p = 0;   // CHAR_WORKSUITSTR_P（_SUIT_ADDPART3）
+	std::int32_t suit_tough_p = 0; // CHAR_WORKSUITTGH_P
+	std::int32_t suit_dex_p = 0;   // CHAR_WORKSUITDEX_P
+};
+
+// 套装加成应用后的三围与 MAXHP。
+struct SuitAppliedStats
+{
+	std::int32_t fix_str;
+	std::int32_t fix_tough;
+	std::int32_t fix_dex;
+	std::int32_t max_hp;
+};
+
+// 套装加成应用（原 Other_DefcharWorkInt, item.c:1871-1894）。
+// 输入为装备加成后的三围（WORKFIXSTR/TOUGH/DEX）与 MAXHP，输出叠加套装加成后的值。
+// 1:1 移植：先 suit_mod_str 百分比修正 STR，再加基础套装值，最后 _SUIT_ADDPART3
+// 百分比加成（原版用 /100.0 浮点，本函数亦用 double 保证逐位一致）。
+// 元素套装抗性（_MAGIC_RESIST_EQUIT）在 8.0 是注释掉的死代码，不实现。
+SuitAppliedStats applySuitBonuses(std::int32_t fix_str, std::int32_t fix_tough,
+                                  std::int32_t fix_dex, std::int32_t max_hp,
+                                  const SuitBonuses &suit) noexcept;
+
 // 叠加上装备加成后的最终战斗数值。
 // 1:1 移植 CHAR_complianceParameter (char/char.c:3525-3547)。
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,

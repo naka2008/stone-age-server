@@ -529,6 +529,66 @@ TEST_CASE("装备累加:纯累加不钳制（钳制在 deriveEquippedStats）")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  11c. 套装加成应用 (Other_DefcharWorkInt, item.c:1871-1894; 批次 E.2)
+// ═══════════════════════════════════════════════════════════════════════════
+TEST_CASE("套装加成:零输入即恒等（8.0 实际行为）")
+{
+	// 8.0 全源码无 CHAR_WORKSUIT* 写入点 ⇒ 恒 0 ⇒ 函数为 no-op
+	const SuitBonuses zero{};
+	const auto out = applySuitBonuses(100, 80, 90, 1000, zero);
+	CHECK(out.fix_str == 100);
+	CHECK(out.fix_tough == 80);
+	CHECK(out.fix_dex == 90);
+	CHECK(out.max_hp == 1000);
+}
+
+TEST_CASE("套装加成:基础加成与百分比修正")
+{
+	SuitBonuses suit{};
+	suit.suit_str = 10;     // +10 力量
+	suit.suit_tough = 5;    // +5 耐力
+	suit.suit_dex = 3;      // +3 敏捷
+	suit.suit_vit = 100;    // +100 HP
+	suit.suit_mod_str = 20; // STR 先 +20%
+
+	// mfix = 100 + (100*20)/100 = 120；fix_str = 120 + 10 = 130
+	const auto out = applySuitBonuses(100, 80, 90, 1000, suit);
+	CHECK(out.fix_str == 130);
+	CHECK(out.fix_tough == 85);
+	CHECK(out.fix_dex == 93);
+	CHECK(out.max_hp == 1100);
+}
+
+TEST_CASE("套装加成:_SUIT_ADDPART3 百分比加成")
+{
+	SuitBonuses suit{};
+	suit.suit_str_p = 10;   // STR +10%（按修正后的 mfix）
+	suit.suit_tough_p = 20; // TOUGH +20%
+	suit.suit_dex_p = 0;    // 0% 不加
+
+	// mfix=100（无 mod）；fix_str = 100 + 100*10/100 = 110
+	// fix_tough = 80 + 80*20/100 = 96；fix_dex 不变
+	const auto out = applySuitBonuses(100, 80, 90, 1000, suit);
+	CHECK(out.fix_str == 110);
+	CHECK(out.fix_tough == 96);
+	CHECK(out.fix_dex == 90);
+}
+
+TEST_CASE("套装加成:百分比加成仅正数生效")
+{
+	SuitBonuses suit{};
+	suit.suit_str_p = 50;
+	suit.suit_tough_p = 50;
+	suit.suit_dex_p = 50;
+
+	// mfix=-10 不触发；mtgh=0 不触发；mdex=90 触发
+	const auto out = applySuitBonuses(-10, 0, 90, 1000, suit);
+	CHECK(out.fix_str == -10);
+	CHECK(out.fix_tough == 0);
+	CHECK(out.fix_dex == 135); // 90 + 90*50/100
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  12. 装备槽位映射 (ITEM_getEquipPlace, item.c:1360-1420)
 // ═══════════════════════════════════════════════════════════════════════════
 TEST_CASE("装备槽位:道具分类至装备部位映射正确")

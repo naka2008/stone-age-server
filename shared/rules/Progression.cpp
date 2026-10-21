@@ -296,6 +296,39 @@ EquipModifiers computeEquipModifiers(const EquippedItemMods *items, std::size_t 
 	return mods;
 }
 
+SuitAppliedStats applySuitBonuses(std::int32_t fix_str, std::int32_t fix_tough,
+                                  std::int32_t fix_dex, std::int32_t max_hp,
+                                  const SuitBonuses &suit) noexcept
+{
+	// 原 Other_DefcharWorkInt (item.c:1871-1894)。
+	// mtgh/mdex 取进入时的值；mfix 先经 suit_mod_str 修正（原版第 1882 行改的是局部 mfix，
+	// 后续第 1889 行用的也是这个改过的 mfix）。
+	const std::int32_t mtgh = fix_tough;
+	const std::int32_t mdex = fix_dex;
+
+	// ① suit_mod_str 百分比修正 STR（整数除法，原版 (mfix*mods)/100）。
+	const std::int32_t mfix = fix_str + (fix_str * suit.suit_mod_str) / 100;
+
+	SuitAppliedStats out{};
+	out.fix_str = mfix + suit.suit_str;
+	out.fix_tough = mtgh + suit.suit_tough;
+	out.fix_dex = mdex + suit.suit_dex;
+	out.max_hp = max_hp + suit.suit_vit;
+
+	// ② _SUIT_ADDPART3 百分比加成（原版用 /100.0 浮点；mfix 取第 ① 步改过的值，
+	//    mtgh/mdex 取进入时的值）。
+	if (mfix > 0)
+		out.fix_str += static_cast<std::int32_t>(static_cast<double>(mfix) *
+		                                         static_cast<double>(suit.suit_str_p) / 100.0);
+	if (mtgh > 0)
+		out.fix_tough += static_cast<std::int32_t>(static_cast<double>(mtgh) *
+		                                           static_cast<double>(suit.suit_tough_p) / 100.0);
+	if (mdex > 0)
+		out.fix_dex += static_cast<std::int32_t>(static_cast<double>(mdex) *
+		                                         static_cast<double>(suit.suit_dex_p) / 100.0);
+	return out;
+}
+
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,
                                  std::int32_t tough, std::int32_t dex,
                                  const EquipModifiers &equip) noexcept
