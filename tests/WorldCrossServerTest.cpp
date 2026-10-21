@@ -82,6 +82,7 @@ struct ServerNode
 		auto *p = world.playerForTest(sid);
 		REQUIRE(p != nullptr);
 		p->level = level;
+		p->hp = 500;
 		p->gold = gold;
 		return sid;
 	}

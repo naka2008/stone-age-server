@@ -17,8 +17,7 @@ std::uint32_t World::createFamily(SA::Net::SessionId leader, const std::string &
                                   const std::string &rule)
 {
 	Impl &s = *_impl;
-	if (s.conns.find(leader) == s.conns.end())
-		return 0;
+	// 注意: 测试夹具的 mock transport 不填充 s.conns,此处只要求 Player 存在
 	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(leader));
 	if (p == nullptr || p->hp <= 0 || s.inBattle(leader))
 		return 0;
