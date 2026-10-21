@@ -311,6 +311,22 @@ enum class UnequipValidateResult : std::uint8_t
 UnequipValidateResult validateUnequip(std::int32_t from_slot, std::int32_t to_slot,
                                       bool to_slot_occupied) noexcept;
 
+// ── 耐久度 (批次 E.4) ───────────────────────────────────────────────
+//
+// ★ Item 结构的 damage_crushe/max_damage_crushe 字段留道具表批次加；
+//   本批先落地原版计算逻辑（纯函数），字段就绪后直接接。
+//
+// 原版：ITEM_DAMAGECRUSHE（当前）/ ITEM_MAXDAMAGECRUSHE（上限），item.h。
+// 耐久百分比（原 ITEM_getItemDamageCrusheED, item.c:2223-2231）。
+//   maxcrushe < 1 → -1（不会损坏）；两者钳制到 1000000；返回 (crushe*100)/maxcrushe。
+//   ★ 注意整数除法截断，原版即如此。
+std::int32_t computeDurabilityPercent(std::int32_t crushe, std::int32_t max_crushe) noexcept;
+
+// 耐久显示用百分比（原 item.c:1484-1492 的显示段）。
+//   crushe < 1 → 按 1 算；maxcrushe < 1 → -1（调用方显示"不会损坏"）；
+//   否则两者先 /1000（原版防溢出），maxcrushe<=0 时按 1，返回 (crushe*100)/maxcrushe。
+std::int32_t computeDurabilityDisplayPercent(std::int32_t crushe, std::int32_t max_crushe) noexcept;
+
 // 叠加上装备加成后的最终战斗数值。
 // 1:1 移植 CHAR_complianceParameter (char/char.c:3525-3547)。
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,

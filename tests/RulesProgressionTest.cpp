@@ -845,3 +845,33 @@ TEST_CASE("卸下验证:槽位段合法性")
 	CHECK(validateUnequip(-1, 9, false) == UnequipValidateResult::kInvalidSlot);
 	CHECK(validateUnequip(0, 54, false) == UnequipValidateResult::kInvalidSlot);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  11e. 耐久度计算 (ITEM_getItemDamageCrusheED, item.c:2223; 批次 E.4)
+// ═══════════════════════════════════════════════════════════════════════════
+TEST_CASE("耐久度:百分比计算与边界")
+{
+	// 正常：5000/10000 → 50%
+	CHECK(computeDurabilityPercent(5000, 10000) == 50);
+	// 满耐久：10000/10000 → 100%
+	CHECK(computeDurabilityPercent(10000, 10000) == 100);
+	// max<1 → -1（不会损坏）
+	CHECK(computeDurabilityPercent(5000, 0) == -1);
+	CHECK(computeDurabilityPercent(0, -5) == -1);
+	// 钳制到 1000000
+	CHECK(computeDurabilityPercent(2000000, 2000000) == 100);
+	// 整数截断：1/3 → 33%
+	CHECK(computeDurabilityPercent(1, 3) == 33);
+}
+
+TEST_CASE("耐久度:显示用百分比")
+{
+	// 正常显示
+	CHECK(computeDurabilityDisplayPercent(5000, 10000) == 50);
+	// crushe<1 按 1 算：0/10000 → (0/1000=0, 10000/1000=10) → 0%
+	CHECK(computeDurabilityDisplayPercent(0, 10000) == 0);
+	// max<1 → -1
+	CHECK(computeDurabilityDisplayPercent(5000, 0) == -1);
+	// 小数值防除零：500/800 → (0, 0→1) → 0%
+	CHECK(computeDurabilityDisplayPercent(500, 800) == 0);
+}

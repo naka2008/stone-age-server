@@ -415,6 +415,32 @@ UnequipValidateResult validateUnequip(std::int32_t from_slot, std::int32_t to_sl
 	return to_slot_occupied ? UnequipValidateResult::kOkSwap : UnequipValidateResult::kOk;
 }
 
+std::int32_t computeDurabilityPercent(std::int32_t crushe, std::int32_t max_crushe) noexcept
+{
+	// 原 ITEM_getItemDamageCrusheED (item.c:2223-2231)。
+	if (max_crushe < 1)
+		return -1;
+	if (max_crushe > 1000000)
+		max_crushe = 1000000;
+	if (crushe > 1000000)
+		crushe = 1000000;
+	return (crushe * 100) / max_crushe;
+}
+
+std::int32_t computeDurabilityDisplayPercent(std::int32_t crushe, std::int32_t max_crushe) noexcept
+{
+	// 原 item.c:1484-1492 显示段。
+	if (crushe < 1)
+		crushe = 1;
+	if (max_crushe < 1)
+		return -1; // 调用方显示"不会损坏"
+	max_crushe = max_crushe / 1000;
+	crushe = crushe / 1000;
+	if (max_crushe <= 0)
+		max_crushe = 1;
+	return (crushe * 100) / max_crushe;
+}
+
 std::int32_t getProfessionStatCap(ProfessionClass profession, StatCategory category) noexcept
 {
 	switch (profession)
