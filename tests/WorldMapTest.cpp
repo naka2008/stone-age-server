@@ -3115,7 +3115,7 @@ TEST_CASE("W.13: 宠物学习技能等级不足与学满拦截 (等级不足下�
 	f.world.loadNpcEntities({npc});
 
 	// ★ #49：8.0 常规版无宠物等级门，低级宠也能学高级技能（扣费正常）
-	const bool learn1 = f.world.learnPetSkill(id, 7009, pet_slot, 20);
+	const bool learn1 = f.world.learnPetSkill(id, 7009, pet_slot, 20, /*skill_slot=*/0);
 	CHECK(learn1);
 	CHECK(p->gold == 4700); // 扣 300
 	const auto *pet = f.world.playerPetAt(id, pet_slot);
@@ -3123,15 +3123,21 @@ TEST_CASE("W.13: 宠物学习技能等级不足与学满拦截 (等级不足下�
 	CHECK(pet->pet_skills[0] == 20);
 
 	// ② 成功学习低级技能 21
-	const bool learn2 = f.world.learnPetSkill(id, 7009, pet_slot, 21);
+	const bool learn2 = f.world.learnPetSkill(id, 7009, pet_slot, 21, /*skill_slot=*/1);
 	CHECK(learn2);
 	CHECK(p->gold == 4600); // 再扣 100
 	CHECK(pet->pet_skills[1] == 21);
 
-	// ③ 重复技能拦截
-	const bool learn_dup = f.world.learnPetSkill(id, 7009, pet_slot, 21);
-	CHECK_FALSE(learn_dup);
-	CHECK(p->gold == 4600); // 零扣费
+	// ★ #50-①：重复学习允许覆盖（原版行为）。指定槽位 1 覆盖技能 21 为技能 20。
+	const bool learn_dup = f.world.learnPetSkill(id, 7009, pet_slot, 20, /*skill_slot=*/1);
+	CHECK(learn_dup);
+	CHECK(p->gold == 4300); // 扣 300
+	CHECK(pet->pet_skills[1] == 20);
+
+	// ★ #50-②：未指定槽位直接拒绝（原版无自动分配）
+	const bool learn_noslot = f.world.learnPetSkill(id, 7009, pet_slot, 21);
+	CHECK_FALSE(learn_noslot);
+	CHECK(p->gold == 4300); // 零扣费
 
 	// ④ 技能栏已满拦截: 将剩余 6 个槽位填满
 	auto *mutable_pet = const_cast<SA::Model::Pet *>(pet);
@@ -3144,10 +3150,12 @@ TEST_CASE("W.13: 宠物学习技能等级不足与学满拦截 (等级不足下�
 	npc.pet_skill_products.push_back({22, "敏捷提升", 100, 1});
 	f.world.loadNpcEntities({npc});
 
-	const bool learn_full = f.world.learnPetSkill(id, 7009, pet_slot, 22);
-	CHECK_FALSE(learn_full);
-	CHECK(p->gold == 4600); // 零扣费
-	CHECK(f.world.playerLastWindowText(id) == "宠物脑子塞满了，装不下新技能了！");
+	// ★ #50-①：显式指定槽位时允许覆盖，即使"技能栏满"（全满指无空槽可自动分配，
+	//   但显式指定槽位总是覆盖成功）。槽 0 从技能 20 覆盖为 22。
+	const bool learn_overwrite = f.world.learnPetSkill(id, 7009, pet_slot, 22, /*skill_slot=*/0);
+	CHECK(learn_overwrite);
+	CHECK(p->gold == 4200); // 扣 100
+	CHECK(pet->pet_skills[0] == 22);
 }
 
 TEST_CASE("W.13: 宠物商店回收出售宠物成功与石币上限保护 (回收宠物增加石币并释放池; 金币超上限时拒绝交易且保留宠物)")

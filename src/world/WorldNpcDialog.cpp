@@ -2099,7 +2099,21 @@ void World::onWindowReply(SA::Net::SessionId id, const SA::Domain::WindowReply &
 					}
 					if (chosen_pet_slot >= 0)
 					{
-						(void)learnPetSkill(id, shop_npc_id, chosen_pet_slot, prod.skill_id, /*skill_slot=*/-1);
+						// ★ #50-②：窗口流程显式找空槽（UI 无槽位选择器，服务端代找）；
+						//   直接调 learnPetSkill API 时必须显式传槽位。
+						int chosen_skill_slot = -1;
+						if (auto *pet = s.pets.resolve(p->pets[static_cast<std::size_t>(chosen_pet_slot)]))
+						{
+							for (std::size_t i = 0; i < SA::Model::Pet::kPetSkillSlots; ++i)
+							{
+								if (pet->pet_skills[i] <= 0)
+								{
+									chosen_skill_slot = static_cast<int>(i);
+									break;
+								}
+							}
+						}
+						(void)learnPetSkill(id, shop_npc_id, chosen_pet_slot, prod.skill_id, chosen_skill_slot);
 						return;
 					}
 				}
@@ -2501,29 +2515,15 @@ bool World::learnPetSkill(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 
 	// ★ #49：去掉自加的宠物等级门。8.0 常规版 npc_petskillshop.c 教学流程无任何宠物等级前置
 	//   （等级门是特殊版 npc_freepetskillshop.c 的 PETSKILL_FREE 概念，常规版从来没有）。
-	// 门 ②: 是否已习得该技能 (不可重复学同一技能)
-	for (std::size_t i = 0; i < SA::Model::Pet::kPetSkillSlots; ++i)
-	{
-		if (pet->pet_skills[i] == skill_id)
-			return false;
-	}
+	// ★ #50-①：去掉重复学习拦截。原版无此检查，直接覆盖槽位（花钱重学也放行）。
 
-	// 门 ③: 目标技能槽位解析
+	// ★ #50-②：技能槽必须客户端显式指定。原版客户端传 1-based 槽位，服务端 slot-- 后
+	//   用 CHAR_CHECKPETSKILLINDEX 校验 0..6，非法直接拒绝，无自动分配。
+	//   （本实现用 0-based API，语义对齐：无效槽位直接拒绝，不自动找空槽）
 	int target_slot = -1;
 	if (skill_slot >= 0 && static_cast<std::size_t>(skill_slot) < SA::Model::Pet::kPetSkillSlots)
 	{
 		target_slot = skill_slot;
-	}
-	else
-	{
-		for (std::size_t i = 0; i < SA::Model::Pet::kPetSkillSlots; ++i)
-		{
-			if (pet->pet_skills[i] <= 0) // 0 或 -1 表示空槽
-			{
-				target_slot = static_cast<int>(i);
-				break;
-			}
-		}
 	}
 	if (target_slot < 0)
 	{
@@ -2534,7 +2534,8 @@ bool World::learnPetSkill(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	}
 
 	// 门 ④: 石币是否充足
-	const std::int32_t price = std::max(1, static_cast<std::int32_t>(target_prod->cost * npc->buy_rate));
+	// ★ #50-③：去掉价格下限 max(1,·)。原版 cost = PETSKILL_COST × rate，rate=0 时可为 0。
+	const std::int32_t price = static_cast<std::int32_t>(target_prod->cost * npc->buy_rate);
 	if (p->gold < price)
 	{
 		std::string less_msg = npc->stone_less_msg.empty() ? "石币不足！" : npc->stone_less_msg;
