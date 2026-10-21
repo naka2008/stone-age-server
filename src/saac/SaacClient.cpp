@@ -206,7 +206,7 @@ std::uint64_t SaacClient::requestUnlock(const std::string & /*cdkey*/,
 	item.envelope.request_id = req_id;
 	item.envelope.deadline_ms = timeout_ms;
 	item.expire_at_ms = now_ms + timeout_ms;
-	item.req_type = PacketType::kLockReq;
+	item.req_type = PacketType::kUnlockReq;
 
 	item.on_completion = [cb](SaacAccountStatus status, const std::vector<std::uint8_t> & /*payload*/)
 	{

@@ -34,9 +34,10 @@ constexpr std::int32_t kComThunderEnclose = 316;
 constexpr std::int32_t kComEnclose = 317;
 constexpr std::int32_t kComTranspose = 318;
 
-constexpr std::int32_t kComChainAtk = 319;
-constexpr std::int32_t kComReback = 320;
-constexpr std::int32_t kComBrust = 321;
+// ★ 顺序与原版 battle.h _PROFESSION_SKILL 枚举一致 (BRUST→CHAIN_ATK→REBACK→…)
+constexpr std::int32_t kComBrust = 319;
+constexpr std::int32_t kComChainAtk = 320;
+constexpr std::int32_t kComReback = 321;
 constexpr std::int32_t kComChainAtk2 = 322;
 constexpr std::int32_t kComScapegoat = 323;
 constexpr std::int32_t kComEnrage = 324;
@@ -49,6 +50,8 @@ constexpr std::int32_t kComDeadAttack = 330;
 constexpr std::int32_t kComConvolute = 331;
 constexpr std::int32_t kComChaos = 332;
 
+// ★ 顺序与原版 battle.h _PROFESSION_SKILL 枚举一致
+//    (TRAP→ENRAGE_PET→…→OBLIVION→RESIST_F_I_T→CALL_NATURE→BOUNDARY)
 constexpr std::int32_t kComTrap = 333;
 constexpr std::int32_t kComEnragePet = 334;
 constexpr std::int32_t kComDragnet = 335;
@@ -57,19 +60,18 @@ constexpr std::int32_t kComPlunder = 337;
 constexpr std::int32_t kComResistFire = 338;
 constexpr std::int32_t kComResistIce = 339;
 constexpr std::int32_t kComResistThunder = 340;
-constexpr std::int32_t kComResistFit = 341;
-constexpr std::int32_t kComCallNature = 342;
-constexpr std::int32_t kComBoundary = 343;
-constexpr std::int32_t kComGResistFire = 344;
-constexpr std::int32_t kComGResistIce = 345;
-constexpr std::int32_t kComGResistThunder = 346;
-constexpr std::int32_t kComAttackWeak = 347;
-constexpr std::int32_t kComInstigate = 348;
-constexpr std::int32_t kComOblivion = 349;
+constexpr std::int32_t kComGResistFire = 341;
+constexpr std::int32_t kComGResistIce = 342;
+constexpr std::int32_t kComGResistThunder = 343;
+constexpr std::int32_t kComAttackWeak = 344;
+constexpr std::int32_t kComInstigate = 345;
+constexpr std::int32_t kComOblivion = 346;
+constexpr std::int32_t kComResistFit = 347;
+constexpr std::int32_t kComCallNature = 348;
+constexpr std::int32_t kComBoundary = 349;
 
-constexpr std::int32_t kComFullMp = 350;
-constexpr std::int32_t kComStrongBack = 351;
-constexpr std::int32_t kComStrengthen = 352;
+// ★ PROFESSION_FULL_MP / STRONG_BACK / STRENGTHEN 在原版中属于"共同技能"
+//    (profession_skill.c:102-104)，没有 BATTLE_COM_S_* 指令码 ⇒ raw_command 置 0
 
 // 64 项原版职业技能权威表
 constexpr std::array<ProfessionSkillInfo, 64> kProfessionSkills = {{
@@ -141,9 +143,9 @@ constexpr std::array<ProfessionSkillInfo, 64> kProfessionSkills = {{
     {static_cast<std::uint32_t>(ProfessionSkillId::kOblivion), "PROFESSION_OBLIVION", ProfessionClass::kHunter, ProfessionSkillCategory::kUtility, kComOblivion},
 
     // ── 共通 (3 项) ──
-    {static_cast<std::uint32_t>(ProfessionSkillId::kFullMp), "PROFESSION_FULL_MP", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, kComFullMp},
-    {static_cast<std::uint32_t>(ProfessionSkillId::kStrongBack), "PROFESSION_STRONG_BACK", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, kComStrongBack},
-    {static_cast<std::uint32_t>(ProfessionSkillId::kStrengthen), "PROFESSION_STRENGTHEN", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, kComStrengthen},
+    {static_cast<std::uint32_t>(ProfessionSkillId::kFullMp), "PROFESSION_FULL_MP", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
+    {static_cast<std::uint32_t>(ProfessionSkillId::kStrongBack), "PROFESSION_STRONG_BACK", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
+    {static_cast<std::uint32_t>(ProfessionSkillId::kStrengthen), "PROFESSION_STRENGTHEN", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
 }};
 
 } // namespace

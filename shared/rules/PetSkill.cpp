@@ -9,14 +9,19 @@ namespace SA::Rules
 {
 
 SacrificeResult computeSacrifice(std::int32_t user_hp,
+                                 std::int32_t user_max_hp,
                                  std::int32_t target_hp,
                                  std::int32_t target_max_hp) noexcept
 {
 	SacrificeResult r{};
-	if (user_hp <= 1 || target_hp <= 0 || target_max_hp <= 0)
+	// 原版: 施法者 HP 必须 > 最大 HP 20%，否则"自身耐久力不足 救援失败"
+	// user_hp * 5 > user_max_hp  ⟺  user_hp > user_max_hp * 0.2（整数运算避免浮点）
+	if (user_max_hp <= 0 || user_hp * 5 <= user_max_hp || target_hp <= 0 || target_max_hp <= 0)
 		return r;
 
-	r.user_loss = user_hp / 2;
+	// 原版: 施法者新血量 = (int)(HP*0.5)；user_loss = 原血量 - 新血量
+	const std::int32_t new_hp = static_cast<std::int32_t>(user_hp * 0.5);
+	r.user_loss = user_hp - new_hp;
 	if (r.user_loss <= 0)
 		r.user_loss = 1;
 
@@ -42,7 +47,8 @@ bool rollFallGround(bool victim_has_ride, Random &rng, int resist) noexcept
 	if (!victim_has_ride)
 		return false;
 	const int threshold = 50 + resist;
-	const int roll = rng.rand(1, 100);
+	// 原版 battle_event.c:6025: RAND(0,100)（0..100 共 101 个值），非 rand(1,100)
+	const int roll = rng.rand(0, 100);
 	return roll > threshold;
 }
 

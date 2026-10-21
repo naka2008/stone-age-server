@@ -5271,25 +5271,31 @@ TEST_CASE("A-δ纯函数:救援/自爆/落马/属性反转/大吼/状态纯函�
 {
 	SUBCASE("computeSacrifice: 扣减50% HP并治愈目标")
 	{
-		auto r1 = computeSacrifice(100, 50, 200);
+		auto r1 = computeSacrifice(100, 200, 50, 200);
 		CHECK(r1.user_loss == 50);
 		CHECK(r1.target_heal == 50);
 
-		auto r2 = computeSacrifice(100, 180, 200);
+		auto r2 = computeSacrifice(100, 200, 180, 200);
 		CHECK(r2.user_loss == 50);
 		CHECK(r2.target_heal == 20);
 
-		auto r3 = computeSacrifice(2, 50, 200);
-		CHECK(r3.user_loss == 1);
-		CHECK(r3.target_heal == 1);
+		// 奇数血量: 原版新血量 = (int)(101*0.5) = 50，user_loss = 51
+		auto r3 = computeSacrifice(101, 200, 50, 200);
+		CHECK(r3.user_loss == 51);
+		CHECK(r3.target_heal == 51);
 
-		auto r4 = computeSacrifice(1, 50, 200);
+		// HP <= 20% 最大 HP 时发动失败
+		auto r4 = computeSacrifice(40, 200, 50, 200);
 		CHECK(r4.user_loss == 0);
 		CHECK(r4.target_heal == 0);
 
-		auto r5 = computeSacrifice(100, 0, 200);
+		auto r5 = computeSacrifice(1, 200, 50, 200);
 		CHECK(r5.user_loss == 0);
 		CHECK(r5.target_heal == 0);
+
+		auto r6 = computeSacrifice(100, 200, 0, 200);
+		CHECK(r6.user_loss == 0);
+		CHECK(r6.target_heal == 0);
 	}
 
 	SUBCASE("computeSelfExplodeDamage: 守方半血伤害")

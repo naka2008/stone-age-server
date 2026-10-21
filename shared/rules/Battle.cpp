@@ -2348,7 +2348,8 @@ static bool resolveOrdered(BattleField field,
 					hit->body.hit.target_count = 1;
 				}
 				const SacrificeResult res =
-				    computeSacrifice(hp[actor_slot], hp[target_slot], field.at(target_slot).max_hp);
+				    computeSacrifice(hp[actor_slot], field.at(actor_slot).max_hp,
+				                     hp[target_slot], field.at(target_slot).max_hp);
 				if (res.user_loss > 0)
 				{
 					hp[actor_slot] = std::max(1, hp[actor_slot] - res.user_loss);

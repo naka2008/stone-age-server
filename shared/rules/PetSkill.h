@@ -45,9 +45,11 @@ struct SacrificeResult
 	std::int32_t target_heal = 0;
 };
 
-// 救援 HP 计算 (原版 battle_event.c:4715-4722)
-// 攻方扣减当前生命值的 50% (至少 1 点)，守方增加相应生命值 (以最大生命值为上限)
+// 救援 HP 计算 (原版 battle_event.c:4704-4729)
+// 施法者 HP 必须 > 最大 HP 20% 才能发动，否则失败；
+// 施法者新血量 = (int)(HP*0.5)，守方增加相应生命值 (以最大生命值为上限)
 SacrificeResult computeSacrifice(std::int32_t user_hp,
+                                 std::int32_t user_max_hp,
                                  std::int32_t target_hp,
                                  std::int32_t target_max_hp) noexcept;
 
@@ -56,7 +58,7 @@ SacrificeResult computeSacrifice(std::int32_t user_hp,
 std::int32_t computeSelfExplodeDamage(std::int32_t defender_hp) noexcept;
 
 // 落马术掷骰判定 (原版 battle_event.c:6022-6035)
-// 当技能造成有效伤害且守方处于骑乘状态时触发: RAND(1, 100) > 50 + resist
+// 当技能造成有效伤害且守方处于骑乘状态时触发: RAND(0, 100) > 50 + resist
 bool rollFallGround(bool victim_has_ride, Random &rng, int resist = 0) noexcept;
 
 // 属性反转纯函数 (原版 battle.c:2880-2895 BATTLE_AttReverse)

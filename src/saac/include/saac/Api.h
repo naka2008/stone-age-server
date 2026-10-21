@@ -56,6 +56,8 @@ enum class PacketType : std::uint16_t
 	kCharSaveResp = 0x0204,
 	kLockReq = 0x0301,
 	kLockResp = 0x0302,
+	kUnlockReq = 0x0303,
+	kUnlockResp = 0x0304,
 	kBroadcastReq = 0x0401,
 	kBroadcastAck = 0x0402,
 };
