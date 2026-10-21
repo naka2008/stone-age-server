@@ -345,6 +345,12 @@ struct CombatModifiers
 	//      将来扩到全 44 种时,**上限仍是 31 而不是 44** —— 别"顺手补齐"。
 	std::int32_t status_resist[12] = {};
 
+	// ★★ **守方四元素抗性**(原 `CHAR_EARTH_RESIST`..`CHAR_WIND_RESIST`,
+	//    `battle_magic.c:1085` `fResist = CHAR_EARTH_RESIST + nFieldAttr`)。
+	//    索引对应 `MagicElement`: 0=地 / 1=水 / 2=火 / 3=风。
+	//    用于魔法闪避 (`rollMagicDodge`) 与魔法伤害 (`computeMagicDamage`)。
+	std::int32_t element_resist[4] = {};
+
 	// ★ 守方「通用抗性」(原 `CHAR_WORKRESIST`,`_SUIT_ADDENDUM` 在 8.0 **开**,`:5136`)。
 	//   ⚠️ 与 `status_resist[]` 是两件事:前者对**所有**状态生效,后者逐状态。
 	std::int32_t general_resist = 0;

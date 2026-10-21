@@ -909,6 +909,10 @@ bool rollDodge(const Combatant &attacker,
 		per += rng.rand(20, 30); // ★ 酒醉真正生效处
 	if (attacker.mods.wielding_bow)
 		per += kDodgeBonusBow;
+	// ★ 原版 BATTLE_DuckCheck (battle_event.c:858-867) 在 NOGUARD 检查前后各加一次
+	//   弓加成（合计 +40），疑似复制粘贴但按 fidelity 逐位对齐
+	if (attacker.mods.wielding_bow)
+		per += kDodgeBonusBow;
 
 	// ⚠️ `_PETSKILL_NEW_PASSIVE` 在 8.0 **关** ⇒ 被动命中/回避加成不实现
 	//    (与 DR-BT14「被动宠技 B80 命中 0/12」一致)。
@@ -2219,9 +2223,16 @@ static bool resolveOrdered(BattleField field,
 				{
 				case SpellKind::kAttack:
 				{
+					// ★ 元素抗性索引 (原版 battle_magic.c:1085
+					//   `fResist = CHAR_EARTH_RESIST + nFieldAttr`)：
+					//   地=0/水=1/火=2/风=3；None 越界时取 0
+					const int elem_idx = static_cast<int>(actor.mods.spell_element);
+					const int tgt_elem_resist = (elem_idx >= 0 && elem_idx < 4)
+					                                ? tgt.mods.element_resist[elem_idx]
+					                                : 0;
 					const bool dodged = rollMagicDodge(
 					    tgt.isPlayer(), tgt.luck,
-					    tgt.mods.status_resist[0], tgt.level, rng);
+					    tgt_elem_resist, tgt.level, rng);
 					if (dodged)
 					{
 						auto *sc = sink.push(SA::Domain::BattleEvent::BodyKind::STATUS_CHANGE);
@@ -2237,7 +2248,7 @@ static bool resolveOrdered(BattleField field,
 					                       ? actor.mods.prof_magic_proficiency
 					                       : 10;
 					const std::int32_t dmg = computeMagicDamage(
-					    actor.mods.spell_element, att_lv, 0,
+					    actor.mods.spell_element, att_lv, tgt_elem_resist,
 					    actor.mods.spell_power, actor.mods.spell_magic_level,
 					    actor, tgt, field, rng);
 
