@@ -765,6 +765,10 @@ enum class NpcType : std::uint8_t
 	kGambleRoulette = 27, // 轮盘赌小猪 (原版 npc_gambleroulette.c: 轮盘动画 NPC)
 	kGambleBank = 28,     // 赌场银行 (原版 npc_gamblebank.c: 存取款, 手续费 300)
 	kGambleMaster = 29,   // 赌场主管 (原版 npc_gamblemaster.c: 轮盘赌下注与派彩)
+	kFamilyMan = 30,      // 家族管理员 (原版 npc_familyman.c: 家族创建/加入/管理)
+	kFmDengon = 31,       // 家族布告栏 (原版 npc_fmdengon.c: 家族留言板/成员列表)
+	kFmLetter = 32,       // 家族信使 (原版 npc_fmletter.c: 家族邮件)
+	kManorSman = 33,      // 庄园管理员 (原版 npc_manorsman.c: 庄园 PK 登记、查询)
 };
 
 // 记录点数据 (阶段 16 NPC:SavePoint, 原版 npc_savepoint.c)
@@ -2177,6 +2181,16 @@ class World final : public SA::Net::TransportEvents,
 	// ── NPC 长尾第二批-2 (P5-2 NPC:PetRaceMaster, PetRacePet) ─────
 	//   原版 npc_petracemaster.c / npc_petracepet.c
 	bool handlePetRaceMasterTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+
+	// ── NPC 长尾第三批-1 (P5-3 家族 NPC) ─────
+	//   原版 npc_familyman.c / npc_fmdengon.c / npc_fmletter.c
+	bool handleFamilyManTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleFmDengonTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleFmLetterTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+
+	// ── NPC 长尾第三批-2 (P5-3 NPC:ManorSman) ─────
+	//   原版 npc_manorsman.c (986 行): 庄园 PK 登记、查询
+	bool handleManorSmanTalk(SA::Net::SessionId id, std::uint64_t npc_id);
 
 	// ── 地下城多层迷宫与漆黑洞窟视野探险系统 (阶段 18 §9.0.134, S20 地图运行时扩展) ─────
 	bool registerDungeon(const DungeonDefinition &dungeon);

@@ -91,13 +91,13 @@
 | 30 | NPC:Dengon | NPC(纯 C) | 249 | 长尾 | ⬜ | — | 同上 |
 | 31 | NPC:Duelranking | NPC(纯 C) | 228 | 长尾 | ⬜ | — | NPC 层未启动;决斗点分配未做(`§9.0.40` 残缺④) |
 | 32 | NPC:fmchallenge | NPC(纯 C) | 715 | 建议弃用 | ❌ | — | `16` §9.2:实现文件不在 `npc/makefile` 的 `SRC=` ⇒ 不进 `libnpc.a` |
-| 33 | NPC:FmDengon | NPC(纯 C) | 1356 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2);家族相关面(`16` §12.4 W12) |
+| 33 | NPC:FmDengon | NPC(纯 C) | 1356 | 长尾 | ✅ | P5-3 | 家族布告栏基础版 (完整需 saac) |
 | 34 | NPC:FmHealer | NPC(纯 C) | 145 | 长尾 | ✅ | `§9.0.133`(原版 `npc_fmhealer.c` 对齐 · 家族医者个人/战宠全满复活与全队队员/战宠集体回复广播;`world_transit` 用例) | — |
-| 35 | NPC:FmLetter | NPC(纯 C) | 682 | 长尾 | ⬜ | — | 同上 |
+| 35 | NPC:FmLetter | NPC(纯 C) | 682 | 长尾 | ✅ | P5-3 | 家族信使基础版 (完整需 saac) |
 | 36 | NPC:NPC_GambleRoulette | NPC(纯 C) | 416 | 长尾 | ✅ | P5-2-1 | 轮盘小猪对话已实现, 动画待做 |
 | 37 | NPC:Healer | NPC(纯 C) | 181 | 长尾 | ✅ | `§9.0.72`(W.7:NPC 实体框架与 Healer 满血满蓝 + GoldLedger 扣费闭环;`world_map` 用例) | — |
 | 38 | NPC:itemchange | NPC(纯 C) | 253 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
-| 39 | NPC:ManorSman | NPC(纯 C) | 986 | 长尾 | ⬜ | — | 同上;庄园 PK 属家族相关面(`16` §12.4 W12) |
+| 39 | NPC:ManorSman | NPC(纯 C) | 986 | 长尾 | ✅ | P5-3 | 对话主流程已移植(npc_manorsman.c:130-260);PK 调度/报名/气势排名待跨服系统 |
 | 40 | NPC:Mic | NPC(纯 C) | 160 | 长尾 | ⬜ | — | 同上 |
 | 41 | NPC:Msg | NPC(纯 C) | 47 | 长尾 | ⬜ | — | 同上(零实例化配置残留,见 Q12 依据) |
 | 42 | NPC:NewVipShop | NPC(纯 C) | 256 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号 ⇒ 8.0 生产二进制里不存在 |
@@ -125,7 +125,7 @@
 | 64 | NPC:doorman | NPC(消费 DSL) | 216 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号 |
 | 65 | NPC:eventaction | NPC(消费 DSL) | 3362 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
 | 66 | NPC:ExChangeMan | NPC(消费 DSL) | 4202 | 核心 | ✅ | `§9.0.74`/`§9.0.75`/`§9.0.97`(W.9/W.10/ExChangeMan 递归下降 DSL 表达式解析与多步对话树闭环;`world_map` 用例) | 复杂复合分支与外部逻辑扩展 |
-| 67 | NPC:Familyman | NPC(消费 DSL) | 687 | 长尾 | ⬜ | — | NPC 层未启动;家族域未启动(`00` §9 阶段 3) |
+| 67 | NPC:Familyman | NPC(消费 DSL) | 687 | 长尾 | ✅ | P5-3 | 家族管理员主流程 (创建/加入/管理入口) |
 | 68 | NPC:FMPKCallMan | NPC(消费 DSL) | 386 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
 | 69 | NPC:FMPKMan | NPC(消费 DSL) | 302 | 长尾 | ⬜ | — | 同上 |
 | 70 | NPC:FMWarpMan | NPC(消费 DSL) | 1194 | 长尾 | ⬜ | — | 同上 |

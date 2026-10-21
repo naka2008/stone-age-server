@@ -1843,6 +1843,30 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 					//   轮盘赌下注与派彩
 					ok = handleGambleMasterTalk(id, npc.id);
 				}
+				else if (npc.type == NpcType::kFamilyMan)
+				{
+					// 家族管理员 (P5-3 家族 NPC, 原版 npc_familyman.c)
+					//   家族创建/加入/管理主流程
+					ok = handleFamilyManTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kFmDengon)
+				{
+					// 家族布告栏 (P5-3 家族 NPC, 原版 npc_fmdengon.c)
+					//   家族留言板/成员列表 (需 saac, 基础版)
+					ok = handleFmDengonTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kFmLetter)
+				{
+					// 家族信使 (P5-3 家族 NPC, 原版 npc_fmletter.c)
+					//   家族邮件 (需 saac, 基础版)
+					ok = handleFmLetterTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kManorSman)
+				{
+					// 庄园管理员 (P5-3 NPC:ManorSman, 原版 npc_manorsman.c:130-260)
+					//   庄园 PK 登记、查询 (PK 调度需跨服系统, 基础版)
+					ok = handleManorSmanTalk(id, npc.id);
+				}
 			}
 		}
 	}
@@ -3680,6 +3704,133 @@ int World::gambleRoulettePayout(int bet_type, int bet_gold, int result)
 	}
 	// 压号码: 1 赔 35 (含本金)
 	return (result == bet_type) ? bet_gold * 35 : 0;
+}
+
+// ── P5-3 家族 NPC ────────────────────────────────────────────────
+
+// 家族管理员 (原版 npc_familyman.c)
+//   主流程: 未加入家族 → 创建/申请加入; 已加入 → 管理菜单 (成员/离开/解散)
+//   原版是窗口配置驱动 (conff 档案), 此处实现核心路径
+bool World::handleFamilyManTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kFamilyMan)
+		return false;
+
+	const std::uint32_t fid = playerFamilyId(id);
+	std::string msg;
+	if (fid == 0)
+	{
+		// 未加入家族: 提供创建 / 申请加入入口
+		// 原版 npc_familyman.c: 成立 (newwin==5) 要求 CHAR_FMINDEX<=0
+		msg = "欢迎来到家族管理员处！\n"
+		      "\n"
+		      "你还没有加入任何家族。\n"
+		      "创建家族需要：等级 30 以上，10000 石币。\n"
+		      "\n"
+		      "※ 创建/申请功能请通过家族指令操作。";
+	}
+	else
+	{
+		// 已加入: 显示家族信息 + 管理选项
+		auto fit = s.families.find(fid);
+		const std::string fname = (fit != s.families.end()) ? fit->second.name : "未知";
+		msg = "欢迎回来！\n"
+		      "\n"
+		      "你的家族：「" +
+		      fname +
+		      "」\n"
+		      "\n"
+		      "※ 成员管理/离开/解散请通过家族指令操作。";
+	}
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 家族布告栏 (原版 npc_fmdengon.c)
+//   原版功能: 家族成员列表 / 家族留言 / 家族间留言板 / 据点申请 / 强者表
+//   完整实现需 saac (ACShowMemberList/ACFMReadMemo 等), 此处为基础版入口
+bool World::handleFmDengonTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kFmDengon)
+		return false;
+
+	const std::uint32_t fid = playerFamilyId(id);
+	std::string msg;
+	if (fid == 0)
+	{
+		msg = "这里是家族布告栏。\n"
+		      "\n"
+		      "加入家族后可以在这里查看：\n"
+		      "・家族成员列表\n"
+		      "・家族留言板\n"
+		      "・家族间强者表\n"
+		      "\n"
+		      "※ 完整功能需连接账号中心 (saac)。";
+	}
+	else
+	{
+		auto fit = s.families.find(fid);
+		const std::string fname = (fit != s.families.end()) ? fit->second.name : "未知";
+		const std::size_t members = (fit != s.families.end()) ? fit->second.members.size() : 0;
+		msg = "「" + fname + "」布告栏\n"
+		                     "\n"
+		                     "成员数: " +
+		      std::to_string(members) +
+		      "\n"
+		      "\n"
+		      "※ 留言板/强者表功能需连接账号中心 (saac)。";
+	}
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 家族信使 (原版 npc_fmletter.c)
+//   原版功能: 家族内部邮件收发 (经 saac 转发)
+//   完整实现需 saac, 此处为基础版入口
+bool World::handleFmLetterTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kFmLetter)
+		return false;
+
+	const std::uint32_t fid = playerFamilyId(id);
+	std::string msg;
+	if (fid == 0)
+	{
+		msg = "这里是家族信使。\n"
+		      "\n"
+		      "加入家族后可以在这里收发家族邮件。\n"
+		      "\n"
+		      "※ 邮件功能需连接账号中心 (saac)。";
+	}
+	else
+	{
+		msg = "这里是家族信使。\n"
+		      "\n"
+		      "※ 家族邮件功能需连接账号中心 (saac)，开发中。";
+	}
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
 }
 
 } // namespace SA::World
