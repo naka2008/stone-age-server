@@ -46,7 +46,7 @@ bool World::isGmCommand(const std::string &text) const noexcept
 		if (iss >> cmd)
 		{
 			std::transform(cmd.begin(), cmd.end(), cmd.begin(), [](unsigned char c)
-			               { return std::tolower(c); });
+			               { return static_cast<char>(std::tolower(c)); });
 			if (cmd == "warp" || cmd == "heal" || cmd == "gold" || cmd == "setgold" ||
 			    cmd == "level" || cmd == "setlevel" || cmd == "setfame" || cmd == "fame" ||
 			    cmd == "additem" || cmd == "delitem" || cmd == "title" || cmd == "announce" ||
@@ -97,7 +97,7 @@ bool World::executeGmCommand(SA::Net::SessionId sender, const std::string &cmd_t
 	}
 
 	std::transform(cmd.begin(), cmd.end(), cmd.begin(), [](unsigned char c)
-	               { return std::tolower(c); });
+	               { return static_cast<char>(std::tolower(c)); });
 
 	if (cmd == "help")
 	{
