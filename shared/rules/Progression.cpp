@@ -381,6 +381,40 @@ std::int32_t getEquipSlotForCategory(std::int32_t category) noexcept
 	}
 }
 
+EquipValidateResult validateEquip(const EquipValidationInput &input, std::int32_t &out_slot) noexcept
+{
+	// ① 等级检查（原 char_item.c:328-333）：转生>0 跳过，否则 ITEM_LEVEL > CHAR_LV 拒绝。
+	if (input.char_transmigration <= 0)
+	{
+		if (input.item_level > input.char_level)
+			return EquipValidateResult::kLevelTooLow;
+	}
+
+	// ② 槽位映射（原 char_item.c:376-380）：无对应槽位拒绝。
+	const std::int32_t slot = getEquipSlotForCategory(input.item_category);
+	if (slot < 0)
+		return EquipValidateResult::kCannotEquip;
+
+	out_slot = slot;
+	return EquipValidateResult::kOk;
+}
+
+UnequipValidateResult validateUnequip(std::int32_t from_slot, std::int32_t to_slot,
+                                      bool to_slot_occupied) noexcept
+{
+	// 装备段 [0,9)，背包段 [9,54)（原 CHAR_EQUIPPLACENUM=9, CHAR_MAXITEMHAVE=54）。
+	constexpr std::int32_t kEquipNum = 9;
+	constexpr std::int32_t kMaxHave = 54;
+
+	const bool from_is_equip = (from_slot >= 0 && from_slot < kEquipNum);
+	const bool to_is_backpack = (to_slot >= kEquipNum && to_slot < kMaxHave);
+	if (!from_is_equip || !to_is_backpack)
+		return UnequipValidateResult::kInvalidSlot;
+
+	// 目标背包槽空：直接卸下；有道具：走交换（调用方再 validateEquip）。
+	return to_slot_occupied ? UnequipValidateResult::kOkSwap : UnequipValidateResult::kOk;
+}
+
 std::int32_t getProfessionStatCap(ProfessionClass profession, StatCategory category) noexcept
 {
 	switch (profession)

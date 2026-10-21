@@ -269,6 +269,48 @@ SuitAppliedStats applySuitBonuses(std::int32_t fix_str, std::int32_t fix_tough,
                                   std::int32_t fix_dex, std::int32_t max_hp,
                                   const SuitBonuses &suit) noexcept;
 
+// ── 穿戴/卸下 (批次 E.3) ─────────────────────────────────────────────
+//
+// 穿戴验证输入（原 CHAR_moveItemFromItemBoxToEquip 的验证段, char_item.c:318-380）。
+// ★ NEEDSTR/NEEDDEX/NEEDTRANS/NEEDPROFESSION 字段在 Item 结构暂未建（留后续批次），
+//   本批只做 8.0 启用的验证：等级 + 槽位映射。
+struct EquipValidationInput
+{
+	std::int32_t item_level = 0;          // ITEM_LEVEL
+	std::int32_t item_category = 0;       // ITEM_TYPE（→ getEquipSlotForCategory）
+	std::int32_t char_level = 0;          // CHAR_LV
+	std::int32_t char_transmigration = 0; // CHAR_TRANSMIGRATION（>0 跳过等级检查）
+};
+
+// 穿戴验证结果。
+enum class EquipValidateResult : std::uint8_t
+{
+	kOk = 0,      // 可穿戴
+	kCannotEquip, // 分类无对应装备槽（原 CANNOTEQUIP）
+	kLevelTooLow, // 等级不足（原 LACKOFCLASS）
+};
+
+// 验证道具能否穿戴（原 CHAR_moveItemFromItemBoxToEquip 验证段）。
+// 返回：kOk 时 out_slot 为目标装备槽（0..8）；否则 out_slot 无意义。
+// 8.0 逻辑：
+//   ① 转生>0 跳过等级检查，否则 ITEM_LEVEL > CHAR_LV 拒绝；
+//   ② getEquipSlotForCategory(category) == -1 拒绝。
+EquipValidateResult validateEquip(const EquipValidationInput &input, std::int32_t &out_slot) noexcept;
+
+// 卸下验证：装备槽 → 背包槽（原 CHAR_moveItemFromEquipToItemBox）。
+// 8.0 逻辑：源槽必须在装备段 [0,9)，目标槽必须在背包段 [9,54)；
+//   目标槽有道具时走交换（调 validateEquip 验证目标道具能否穿上）。
+// 本函数只做槽位合法性判定，交换的验证由调用方按 validateEquip 处理。
+enum class UnequipValidateResult : std::uint8_t
+{
+	kOk = 0,      // 可直接卸下（目标背包槽空）
+	kOkSwap,      // 需交换（目标背包槽有道具，调用方再 validateEquip）
+	kInvalidSlot, // 槽位越界或段错误（装备→装备、背包→背包等）
+};
+
+UnequipValidateResult validateUnequip(std::int32_t from_slot, std::int32_t to_slot,
+                                      bool to_slot_occupied) noexcept;
+
 // 叠加上装备加成后的最终战斗数值。
 // 1:1 移植 CHAR_complianceParameter (char/char.c:3525-3547)。
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,

@@ -793,3 +793,55 @@ TEST_CASE("职业属性上限门禁与非战斗遇敌率纯函数 (char.c:2570 /
 		CHECK(computeHunterEncounterFix(0, 10, false) == 0);
 	}
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  11d. 穿戴/卸下验证 (CHAR_moveItemFromItemBoxToEquip/Box, char_item.c; 批次 E.3)
+// ═══════════════════════════════════════════════════════════════════════════
+TEST_CASE("穿戴验证:等级与槽位映射")
+{
+	// 斧 (category=1) → 槽2，等级足够
+	EquipValidationInput ok{};
+	ok.item_level = 10;
+	ok.item_category = 1; // ITEM_AXE
+	ok.char_level = 20;
+	std::int32_t slot = -1;
+	CHECK(validateEquip(ok, slot) == EquipValidateResult::kOk);
+	CHECK(slot == 2);
+
+	// 等级不足
+	EquipValidationInput low{};
+	low.item_level = 30;
+	low.item_category = 1;
+	low.char_level = 20;
+	CHECK(validateEquip(low, slot) == EquipValidateResult::kLevelTooLow);
+
+	// 转生跳过等级检查
+	EquipValidationInput trans{};
+	trans.item_level = 100;
+	trans.item_category = 1;
+	trans.char_level = 20;
+	trans.char_transmigration = 1;
+	CHECK(validateEquip(trans, slot) == EquipValidateResult::kOk);
+
+	// 不可装备的分类（如料理）
+	EquipValidationInput noequip{};
+	noequip.item_level = 1;
+	noequip.item_category = 99; // 未知分类
+	noequip.char_level = 20;
+	CHECK(validateEquip(noequip, slot) == EquipValidateResult::kCannotEquip);
+}
+
+TEST_CASE("卸下验证:槽位段合法性")
+{
+	// 装备槽0 → 背包槽9（空）：直接卸下
+	CHECK(validateUnequip(0, 9, false) == UnequipValidateResult::kOk);
+	// 装备槽0 → 背包槽9（有道具）：交换
+	CHECK(validateUnequip(0, 9, true) == UnequipValidateResult::kOkSwap);
+	// 装备→装备：非法
+	CHECK(validateUnequip(0, 1, false) == UnequipValidateResult::kInvalidSlot);
+	// 背包→背包：非法（本函数只管卸下）
+	CHECK(validateUnequip(9, 10, false) == UnequipValidateResult::kInvalidSlot);
+	// 越界
+	CHECK(validateUnequip(-1, 9, false) == UnequipValidateResult::kInvalidSlot);
+	CHECK(validateUnequip(0, 54, false) == UnequipValidateResult::kInvalidSlot);
+}
