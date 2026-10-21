@@ -125,8 +125,8 @@ class MemoryStorage final : public Service
 		test_char.player.image = 100000;
 		test_char.player.face_image = 30000;
 		test_char.player.floor = 100;
-		test_char.player.x = 20;
-		test_char.player.y = 20;
+		test_char.player.x = 643;
+		test_char.player.y = 459;
 		test_char.player.dir = 5;
 		test_char.player.default_pet = 0;
 
