@@ -194,6 +194,10 @@ struct Player
 	//    只读观察面 = `World::playerGold`(存档快照走 `copyPlayerData`,不算写点)。
 	std::int32_t gold = 0;
 
+	// ── 赌场银行存款 (P5 赌场三件套。原版 CHAR_PERSONAGOLD, char_base.h) ──
+	//   与随身金币 (gold) 分离, 通过 GambleBank NPC 存取。
+	std::int32_t bank_gold = 0;
+
 	// ── 位置(批次 W.1。原 CHAR_FLOOR / CHAR_X / CHAR_Y / CHAR_DIR)──────────
 	//
 	// ★ 服务端权威(10 §4.1):客户端只做预测,服务端校验碰撞后写这里。

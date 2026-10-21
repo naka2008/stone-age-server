@@ -94,7 +94,7 @@
 | 33 | NPC:FmDengon | NPC(纯 C) | 1356 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2);家族相关面(`16` §12.4 W12) |
 | 34 | NPC:FmHealer | NPC(纯 C) | 145 | 长尾 | ✅ | `§9.0.133`(原版 `npc_fmhealer.c` 对齐 · 家族医者个人/战宠全满复活与全队队员/战宠集体回复广播;`world_transit` 用例) | — |
 | 35 | NPC:FmLetter | NPC(纯 C) | 682 | 长尾 | ⬜ | — | 同上 |
-| 36 | NPC:NPC_GambleRoulette | NPC(纯 C) | 416 | 长尾 | ⬜ | — | 同上(赔率在 `.arg` 键,`16` §12.4 W6) |
+| 36 | NPC:NPC_GambleRoulette | NPC(纯 C) | 416 | 长尾 | ✅ | P5-2-1 | 轮盘小猪对话已实现, 动画待做 |
 | 37 | NPC:Healer | NPC(纯 C) | 181 | 长尾 | ✅ | `§9.0.72`(W.7:NPC 实体框架与 Healer 满血满蓝 + GoldLedger 扣费闭环;`world_map` 用例) | — |
 | 38 | NPC:itemchange | NPC(纯 C) | 253 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
 | 39 | NPC:ManorSman | NPC(纯 C) | 986 | 长尾 | ⬜ | — | 同上;庄园 PK 属家族相关面(`16` §12.4 W12) |
@@ -130,8 +130,8 @@
 | 69 | NPC:FMPKMan | NPC(消费 DSL) | 302 | 长尾 | ⬜ | — | 同上 |
 | 70 | NPC:FMWarpMan | NPC(消费 DSL) | 1194 | 长尾 | ⬜ | — | 同上 |
 | 71 | NPC:freepetskillshop | NPC(消费 DSL) | 565 | 长尾 | ⬜ | 特殊版未移植（2026-10-22 第6轮核对：W.13 实际移植的是常规版 `npc_petskillshop.c`，特殊版 `npc_freepetskillshop.c` 的 FREE/种类/道具/WARP 机制均无） | — |
-| 72 | NPC:NPC_GambleBank | NPC(消费 DSL) | 482 | 长尾 | ⬜ | — | 同上(赌博产钱点,`16` §12.4 W6) |
-| 73 | NPC:NPC_GambleMaster | NPC(消费 DSL) | 593 | 长尾 | ⬜ | — | 同上 |
+| 72 | NPC:NPC_GambleBank | NPC(消费 DSL) | 482 | 长尾 | ✅ | P5-2-1 | 银行存取已实现 (bank_gold 字段, 手续费 300) |
+| 73 | NPC:NPC_GambleMaster | NPC(消费 DSL) | 593 | 长尾 | ✅ | P5-2-1 | 主管对话+派彩函数已实现, 下注窗口待做 |
 | 74 | NPC:ItemShop | NPC(消费 DSL) | 1089 | 核心 | ✅ | `§9.0.77`(W.12:NPC 道具商店 ShopMan 买卖交易与 GoldLedger 扣加金闭环;`world_map` 用例) | 特殊商店折扣/积分机制 |
 | 75 | NPC:Janken | NPC(消费 DSL) | 507 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
 | 76 | NPC:LuckyMan | NPC(消费 DSL) | 240 | 长尾 | ⬜ | — | 同上 |

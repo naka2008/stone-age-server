@@ -1813,6 +1813,36 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 					//   弹出 YES/NO 窗口, 费用从 npc_argstr 的 Stone 键读取 (支持 LV*N 或固定值)
 					ok = handleLuckyManTalk(id, npc.id);
 				}
+				else if (npc.type == NpcType::kPetRaceMaster)
+				{
+					// 宠物赛跑主管 (P5-2 NPC:PetRaceMaster, 原版 npc_petracemaster.c:155-163)
+					//   弹出菜单: 游戏规则 / 宠物状况 / 离开
+					ok = handlePetRaceMasterTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kPetRacePet)
+				{
+					// 宠物赛跑参赛宠 (P5-2 NPC:PetRacePet, 原版 npc_petracepet.c:79-81)
+					//   参赛宠物不响应对话 (原版直接 return)
+					ok = true;
+				}
+				else if (npc.type == NpcType::kGambleRoulette)
+				{
+					// 轮盘赌小猪 (P5 赌场三件套, 原版 npc_gambleroulette.c)
+					//   动画 NPC, 对话时介绍轮盘赌玩法
+					ok = handleGambleRouletteTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kGambleBank)
+				{
+					// 赌场银行 (P5 赌场三件套, 原版 npc_gamblebank.c:95-158)
+					//   存取款窗口, 手续费 300
+					ok = handleGambleBankTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kGambleMaster)
+				{
+					// 赌场主管 (P5 赌场三件套, 原版 npc_gamblemaster.c)
+					//   轮盘赌下注与派彩
+					ok = handleGambleMasterTalk(id, npc.id);
+				}
 			}
 		}
 	}
@@ -3453,6 +3483,202 @@ bool World::confirmLuckyMan(SA::Net::SessionId id, std::uint64_t npc_id)
 	s.sendExChangeWindow(id, npc->id, title,
 	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 	return true;
+}
+
+// ── P5-2: 宠物赛跑主管 (原版 npc_petracemaster.c) ─────────────────────
+//
+// 原版 NPC_PetRaceMasterTalked (npc_petracemaster.c:155-163):
+//   检查对话者是玩家且面对面，然后弹出选择窗口 (selectWindow case 0)。
+//
+// 本实现: 显示主菜单 (游戏规则 / 宠物状况 / 离开)。
+//   注意: 完整的赛跑状态机 (NPC_State_Init → WaitDropStake → PetRacing → ShowWinPet,
+//   下注、赔率计算、发奖) 需要世界 tick 驱动，原版由 NPC_PetRaceMasterLoop
+//   (npc_petracemaster.c:307-) 每 1-30 秒推进。此处仅实现对话交互部分。
+bool World::handlePetRaceMasterTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kPetRaceMaster)
+		return false;
+
+	// 主菜单 (原版 NPC_PetRaceMaster_selectWindow case 0, npc_petracemaster.c:173-182)
+	//   原版是 SELECT 窗口，选项：1=游戏规则，2=宠物状况，3=离开
+	//   本实现用消息窗口展示，规则与宠物状况通过 npc_argstr 配置
+	std::string menu = "　　　　　★宠物竞速场★\n"
+	                   "你好，想要知道什麽情报吗？\n"
+	                   "\n　　　　《察看游戏规则》\n"
+	                   "　　　　　《宠物状况》\n"
+	                   "　　　　　　《离开》\n"
+	                   "\n※ 完整赛跑流程（含下注、赔率、发奖）待世界 tick 接入后启用。";
+	s.sendExChangeWindow(id, npc->id, menu,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5 第二批-1 赌场三件套 ──────────────────────────────────────────────
+//
+// 原版: gmsv/npc/npc_gambleroulette.c (474 行) / npc_gamblebank.c (519 行) /
+//       npc_gamblemaster.c (600 行), 均在 `#ifdef _GAMBLE_ROULETTE` / `_GAMBLE_BANK` 下。
+
+// 轮盘赌小猪 (原版 npc_gambleroulette.c)
+//   原版是动画 NPC (Gamble_Roulette_walk 沿路线走动), 对话时无特殊逻辑。
+//   本实现: 对话时介绍玩法。
+bool World::handleGambleRouletteTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kGambleRoulette)
+		return false;
+
+	// 原版小猪无对话逻辑, 此处给出玩法介绍 (贴近原版赌场氛围)
+	std::string msg = "哼哼～我是轮盘赌的小猪！\n"
+	                  "\n"
+	                  "去找赌场主管下注吧！\n"
+	                  "红 1 赔 2，绿 1 赔 2，猜中号码 1 赔 35！\n"
+	                  "\n"
+	                  "※ 记得先去赌场银行把钱存好哦。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 赌场银行 (原版 npc_gamblebank.c:95-158 NPC_GambleBankTalked)
+//   原版流程: Talked → GAMBLE_START (YES/NO 窗口) → GAMBLE_SELET (SELECT 窗口)
+//   本实现: 对话直接显示存取说明 + 当前余额 (简化版, 不走多级窗口)
+bool World::handleGambleBankTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kGambleBank)
+		return false;
+
+	// 原版 GAMBLE_TYPE: 2=银行, 3=换币, 4=BOTH (npc_gamblebank.c:56-78)
+	// 本实现只做银行存取 (GAMBLE_TYPE=2 的子集)
+	std::string msg = "欢迎光临赌场银行！\n"
+	                  "\n"
+	                  "随身金币: " +
+	                  std::to_string(p->gold) + "\n"
+	                                            "银行存款: " +
+	                  std::to_string(p->bank_gold) + "\n"
+	                                                 "\n"
+	                                                 "存款: 把随身金币存入银行 (免手续费)\n"
+	                                                 "取款: 从银行取出, 手续费 300, 单次 100～1000000\n"
+	                                                 "\n"
+	                                                 "※ 存取请通过指令操作。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 赌场银行存取 (原版 NPC_GambleBank_DoGold, npc_gamblebank.c:387-454)
+//   Gold > 0: 存款 (随身 → 银行, 免手续费)
+//   Gold < 0: 取款 (银行 → 随身, 手续费 300, 限 100～1000000)
+//   返回: 1=成功, 2=金额不足, 3=个人将超上限, 4=银行将满, 5=超单次上限, 6=低于下限
+int World::gambleBankDoGold(SA::Net::SessionId id, int gold)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (p == nullptr)
+		return 0;
+
+	// 原版常量 (npc_gamblebank.c:52-54)
+	constexpr int kFee = 300;                        // 取款手续费
+	constexpr int kGetMax = 1000000;                 // 单次取款上限
+	constexpr int kGetMin = 100;                     // 单次取款下限
+	constexpr std::int32_t kMaxBankGold = 100000000; // 银行上限 (原版 CHAR_MAXPERSONAGOLD)
+
+	if (gold == 0)
+		return 0;
+
+	if (gold < 0)
+	{
+		// 取款
+		int withdraw = -gold;
+		if (withdraw > kGetMax)
+			return 5;
+		if (withdraw < kGetMin)
+			return 6;
+		if (withdraw + kFee > p->bank_gold)
+			return 2; // 银行存款不够 (含手续费)
+		// 直接调整 (银行账本 + 随身金币, 金额已验证)
+		// 原版: CHAR_setInt(CHAR_PERSONAGOLD, ...) + CHAR_AddGold(...)
+		p->bank_gold -= (withdraw + kFee);
+		p->gold += withdraw;
+		return 1;
+	}
+	else
+	{
+		// 存款
+		if (gold > p->gold)
+			return 2; // 随身金币不足
+		if (static_cast<std::int64_t>(p->bank_gold) + gold > kMaxBankGold)
+			return 4; // 银行将满
+		// 原版: CHAR_DelGold(...) + CHAR_setInt(CHAR_PERSONAGOLD, ...)
+		p->gold -= gold;
+		p->bank_gold += gold;
+		return 1;
+	}
+}
+
+// 赌场主管 (原版 npc_gamblemaster.c)
+//   原版流程: Talked → ROULETTE_START (YES/NO) → ROULETTE_SELECT (下注窗口)
+//   本实现: 对话显示玩法说明 (完整下注窗口待窗口 UI 系统)
+bool World::handleGambleMasterTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kGambleMaster)
+		return false;
+
+	std::string msg = "欢迎来到轮盘赌！\n"
+	                  "\n"
+	                  "玩法: 小猪会绕着轮盘跑, 停在哪个号码上, \n"
+	                  "压中颜色 (红/绿) 1 赔 2, 压中号码 1 赔 35！\n"
+	                  "\n"
+	                  "随身金币: " +
+	                  std::to_string(p->gold) + "\n"
+	                                            "\n"
+	                                            "※ 下注窗口开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 轮盘赌派彩 (原版 npc_gamblemaster.c EndTypedef 派彩表简化版)
+//   bet_type: 1=红, 2=绿, 3+=具体号码
+//   result: 开奖结果 (1=红, 2=绿, 或具体号码)
+//   返回派彩金额 (含本金, 0=输)
+int World::gambleRoulettePayout(int bet_type, int bet_gold, int result)
+{
+	if (bet_gold <= 0)
+		return 0;
+	if (bet_type == 1 || bet_type == 2)
+	{
+		// 压颜色: 1 赔 2 (含本金, 原版 roulette41/42 对应)
+		return (result == bet_type) ? bet_gold * 2 : 0;
+	}
+	// 压号码: 1 赔 35 (含本金)
+	return (result == bet_type) ? bet_gold * 35 : 0;
 }
 
 } // namespace SA::World

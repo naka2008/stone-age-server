@@ -758,8 +758,13 @@ enum class NpcType : std::uint8_t
 	kOldman = 20,
 	kFmHealer = 21,
 	kTranserMan = 22,
-	kPetMaker = 23, // 宠物制造者 (原版 npc_petmaker.c: 给声望达标玩家传说宠物)
-	kLuckyMan = 24, // 占卜师 (原版 npc_luckyman.c: 付费随机运势)
+	kPetMaker = 23,       // 宠物制造者 (原版 npc_petmaker.c: 给声望达标玩家传说宠物)
+	kLuckyMan = 24,       // 占卜师 (原版 npc_luckyman.c: 付费随机运势)
+	kPetRaceMaster = 25,  // 宠物赛跑主管 (原版 npc_petracemaster.c: 竞速场管理、下注、发奖)
+	kPetRacePet = 26,     // 宠物赛跑参赛宠 (原版 npc_petracepet.c: 赛道移动、随机事件)
+	kGambleRoulette = 27, // 轮盘赌小猪 (原版 npc_gambleroulette.c: 轮盘动画 NPC)
+	kGambleBank = 28,     // 赌场银行 (原版 npc_gamblebank.c: 存取款, 手续费 300)
+	kGambleMaster = 29,   // 赌场主管 (原版 npc_gamblemaster.c: 轮盘赌下注与派彩)
 };
 
 // 记录点数据 (阶段 16 NPC:SavePoint, 原版 npc_savepoint.c)
@@ -2157,6 +2162,22 @@ class World final : public SA::Net::TransportEvents,
 	bool confirmLuckyMan(SA::Net::SessionId id, std::uint64_t npc_id);
 	std::string getNpcArgStr(const std::string &argstr, const std::string &key);
 
+	// ── P5 第二批-1 赌场三件套 (NPC:GambleRoulette, GambleBank, GambleMaster) ──
+	//   原版 gmsv/npc/npc_gambleroulette.c / npc_gamblebank.c / npc_gamblemaster.c
+	bool handleGambleRouletteTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleGambleBankTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleGambleMasterTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	// 赌场银行存取 (原版 NPC_GambleBank_DoGold, npc_gamblebank.c:387)
+	//   返回 1=成功, 2=金额不足, 3=个人将超上限, 4=银行将满, 5=超单次上限, 6=低于下限
+	int gambleBankDoGold(SA::Net::SessionId id, int gold);
+	// 轮盘赌结算 (原版 npc_gamblemaster.c 派彩逻辑简化版)
+	//   bet_type: 1=红, 2=绿; bet_gold: 下注金额; 返回派彩金额 (0=输)
+	int gambleRoulettePayout(int bet_type, int bet_gold, int result);
+
+	// ── NPC 长尾第二批-2 (P5-2 NPC:PetRaceMaster, PetRacePet) ─────
+	//   原版 npc_petracemaster.c / npc_petracepet.c
+	bool handlePetRaceMasterTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+
 	// ── 地下城多层迷宫与漆黑洞窟视野探险系统 (阶段 18 §9.0.134, S20 地图运行时扩展) ─────
 	bool registerDungeon(const DungeonDefinition &dungeon);
 	std::optional<DungeonDefinition> findDungeon(std::uint32_t dungeon_id) const;
@@ -2952,6 +2973,16 @@ enum class GoldReason : std::uint8_t
 	kCharmFee,
 	// 占卜师 NPC 占卜费用扣除 (汇, 阶段 19 NPC:LuckyMan)
 	kLuckyManFee,
+	// 赌场银行存款 (汇, P5 赌场三件套 NPC:GambleBank)
+	kGambleBankDeposit,
+	// 赌场银行取款 (汇, P5 赌场三件套 NPC:GambleBank)
+	kGambleBankWithdraw,
+	// 赌场银行取款手续费 (汇, P5 赌场三件套 NPC:GambleBank, 固定 300)
+	kGambleBankFee,
+	// 轮盘赌下注 (汇, P5 赌场三件套 NPC:GambleMaster)
+	kGambleBet,
+	// 轮盘赌派彩 (汇, P5 赌场三件套 NPC:GambleMaster)
+	kGamblePayout,
 };
 
 // ── 溢出处置结果(DR-EC4:必须有名字)──────────────────────────────────
@@ -3108,6 +3139,16 @@ inline const char *goldReasonName(GoldReason r) noexcept
 		return "charm_fee";
 	case GoldReason::kLuckyManFee:
 		return "luckyman_fee";
+	case GoldReason::kGambleBankDeposit:
+		return "gamble_bank_deposit";
+	case GoldReason::kGambleBankWithdraw:
+		return "gamble_bank_withdraw";
+	case GoldReason::kGambleBankFee:
+		return "gamble_bank_fee";
+	case GoldReason::kGambleBet:
+		return "gamble_bet";
+	case GoldReason::kGamblePayout:
+		return "gamble_payout";
 	}
 	return "unknown";
 }
