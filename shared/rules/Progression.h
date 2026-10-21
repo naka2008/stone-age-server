@@ -430,6 +430,54 @@ struct PetSellPriceInput
 // 计算宠物店卖宠价格。纯函数，无随机。
 std::int32_t computePetSellPrice(const PetSellPriceInput &in) noexcept;
 
+// ── 骑乘三围调整 (移植 BATTLE_adjustRidePet3A, battle_event.c:245-290) ──
+//
+// 8.0 正常版 + _BATTLE_NEWPOWER (version.h:113 启用, _BACK_VERSION 注释掉):
+//   - 攻击力:
+//     - 投掷武器: 人物攻击 + 宠物攻击 × 0.4
+//     - 近战: 人物攻击 × 0.8 + 宠物攻击 × 0.8
+//   - 防御力: 人物防御 × 0.7 + 宠物防御 × 0.7
+//   - 敏捷力:
+//     - 攻击方 + 投掷: 人物敏捷 × 0.8 + 宠物敏捷 × 0.2
+//     - 攻击方 + 近战: 人物敏捷 × 0.2 + 宠物敏捷 × 0.8
+//     - 防御方: 人物敏捷 × 0.1 + 宠物敏捷 × 0.9
+//
+// ★ 纯函数:输入人物/宠物的三围 + 是否投掷武器 + 攻/守方,返回调整后的值。
+//   调用方负责判断是否骑乘(ride_pet != -1)以及取宠物的三围。
+enum class RideStatKind : std::uint8_t
+{
+	kAttack = 0,  // CHAR_WORKATTACKPOWER
+	kDefense = 1, // CHAR_WORKDEFENCEPOWER
+	kQuick = 2,   // CHAR_WORKQUICK
+};
+
+enum class RideSide : std::uint8_t
+{
+	kAttacker = 0, // ATTACKSIDE
+	kDefender = 1, // DEFFENCESIDE
+};
+
+double adjustRidePetStat(RideStatKind kind, RideSide side, bool is_throw_weapon,
+                         double player_stat, double pet_stat) noexcept;
+
+// ── 场景内道具恢复 (移植 ITEM_useRecovery_Field, item_event.c:686) ──
+//
+// 原版逻辑 (item_event.c:900-980):
+//   power = RAND(work*0.9, work*1.1)  // 调用方已做随机，此处取最终值
+//   workhp = current + power
+//   workhp = min(workhp, max)         // 不超过上限
+//   workhp = max(workhp, min_val)     // HP/MP 最低 1
+//   recovery = workhp - current
+//
+// 纯函数：输入当前值、上限、恢复量（已随机），返回 {新值, 实际恢复量}。
+struct FieldRecoveryResult
+{
+	std::int32_t new_value = 0;
+	std::int32_t recovered = 0;
+};
+FieldRecoveryResult computeFieldRecovery(std::int32_t current, std::int32_t max,
+                                         std::int32_t power) noexcept;
+
 } // namespace SA::Rules
 
 #endif // __SA_Progression_H__

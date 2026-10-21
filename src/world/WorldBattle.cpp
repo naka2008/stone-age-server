@@ -591,6 +591,26 @@ void deliverPlayerProfit(BattleInstance &b, int slot, PlayerPool &players, ItemP
 	b.gained[at] += exp;
 	b.pending_exp[at] = 0;
 
+	// ── 骑宠经验 ×0.6 (P3, 8.0 battle.c:5080 `nowexp *= 0.6`) ──
+	// ★ 8.0:玩家击杀敌人时,若有骑宠,骑宠按自身等级差独立计算经验再 ×0.6。
+	//   此处简化:骑宠获得玩家经验 ×0.6(等级差已在玩家经验中体现)。
+	if (pets != nullptr && player->ride_pet != -1 &&
+	    static_cast<std::size_t>(player->ride_pet) < SA::Model::kMaxPetHave)
+	{
+		const auto ride_h = player->pets[static_cast<std::size_t>(player->ride_pet)];
+		if (ride_h.valid())
+		{
+			if (auto *ride_pet = pets->resolve(ride_h))
+			{
+				const int ride_exp = static_cast<int>(exp * 0.6);
+				if (ride_exp > 0)
+				{
+					ride_pet->exp += ride_exp;
+				}
+			}
+		}
+	}
+
 	// ── 玩家经验升级与满血满蓝结算 (批次 P.1) ───────────────────────
 	const auto lvl_res = SA::Rules::checkPlayerLevelUp(player->level, player->exp);
 	if (lvl_res.levels_gained > 0)

@@ -223,6 +223,8 @@ bool World::mountPet(SA::Net::SessionId session, int pet_slot)
 	p->image = ride_img;
 
 	s.player_rides[session] = {pet_slot, orig_img};
+	// ★ P3:同步 Player::ride_pet (原 CHAR_RIDEPET),供战斗经验 ×0.6 等逻辑使用。
+	p->ride_pet = pet_slot;
 	return true;
 }
 
@@ -236,6 +238,8 @@ bool World::dismountPet(SA::Net::SessionId session)
 	if (SA::Model::Player *p = s.players.resolve(s.player_of_session.find(session)))
 	{
 		p->image = it->second.original_image;
+		// ★ P3:同步 Player::ride_pet = -1 (原 CHAR_RIDEPET = -1)。
+		p->ride_pet = -1;
 	}
 	s.player_rides.erase(it);
 	return true;

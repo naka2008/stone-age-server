@@ -599,4 +599,69 @@ std::int32_t computePetSellPrice(const PetSellPriceInput &in) noexcept
 	return cost;
 }
 
+double adjustRidePetStat(RideStatKind kind, RideSide side, bool is_throw_weapon,
+                         double player_stat, double pet_stat) noexcept
+{
+	// 1:1 移植 BATTLE_adjustRidePet3A (battle_event.c:245-290)。
+	// 8.0 正常版 + _BATTLE_NEWPOWER (version.h:113 启用)。
+	switch (kind)
+	{
+	case RideStatKind::kAttack:
+		if (is_throw_weapon)
+		{
+			// 投掷:人物攻击 + 宠物攻击×0.4
+			return player_stat + pet_stat * 0.4;
+		}
+		else
+		{
+			// 近战:人物攻击×0.8 + 宠物攻击×0.8
+			return player_stat * 0.8 + pet_stat * 0.8;
+		}
+	case RideStatKind::kDefense:
+		// 防御:人物防御×0.7 + 宠物防御×0.7
+		return player_stat * 0.7 + pet_stat * 0.7;
+	case RideStatKind::kQuick:
+		if (side == RideSide::kAttacker)
+		{
+			if (is_throw_weapon)
+			{
+				// 攻击方 + 投掷:人物敏捷×0.8 + 宠物敏捷×0.2
+				return player_stat * 0.8 + pet_stat * 0.2;
+			}
+			else
+			{
+				// 攻击方 + 近战:人物敏捷×0.2 + 宠物敏捷×0.8
+				return player_stat * 0.2 + pet_stat * 0.8;
+			}
+		}
+		else
+		{
+			// 防御方:人物敏捷×0.1 + 宠物敏捷×0.9
+			return player_stat * 0.1 + pet_stat * 0.9;
+		}
+	}
+	// 不可达:所有 RideStatKind 已覆盖。
+	return player_stat;
+}
+
+// 场景内道具恢复 —— 移植 ITEM_useRecovery_Field (item_event.c:900-980)。
+//
+// 原版：
+//   workhp = prevhp + power; workhp = min(workhp, workmax); workhp = max(workhp, workmin);
+//   其中 HP/MP 的 workmin=1, workmax=上限。
+//   recovery = workhp - prevhp (实际恢复量)。
+FieldRecoveryResult computeFieldRecovery(std::int32_t current, std::int32_t max,
+                                         std::int32_t power) noexcept
+{
+	FieldRecoveryResult out;
+	std::int32_t work = current + power;
+	if (work > max)
+		work = max;
+	if (work < 1)
+		work = 1;
+	out.new_value = work;
+	out.recovered = work - current;
+	return out;
+}
+
 } // namespace SA::Rules

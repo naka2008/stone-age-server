@@ -758,6 +758,8 @@ enum class NpcType : std::uint8_t
 	kOldman = 20,
 	kFmHealer = 21,
 	kTranserMan = 22,
+	kPetMaker = 23, // 宠物制造者 (原版 npc_petmaker.c: 给声望达标玩家传说宠物)
+	kLuckyMan = 24, // 占卜师 (原版 npc_luckyman.c: 付费随机运势)
 };
 
 // 记录点数据 (阶段 16 NPC:SavePoint, 原版 npc_savepoint.c)
@@ -1069,6 +1071,9 @@ struct NpcEntity
 	// ── 阶段 17: 经典长尾 NPC 美容师、家族医者与传送师 (Charm, FmHealer, TranserMan) ──
 	std::vector<TranserRoute> transer_routes{}; // 特使传送师线路 (TranserMan)
 	std::int32_t fm_floor = 0;                  // 家族医者专属领地地图 (FmHealer, 0 为不限制)
+
+	// ── 阶段 19: NPC 长尾第一批 (PetMaker, LuckyMan) ──
+	std::string npc_argstr{}; // NPC 通用配置串 (LuckyMan: Stone/main_msg/NoMoney/luck{N} 键)
 };
 
 // 世界态敌人的位置快照(批次 W.2 / W.3 的观察面)。
@@ -1095,7 +1100,9 @@ struct WorldEnemyPos
 //    itemset6.txt 的 `usefunc == "ITEM_useRecovery"` 行、按 `ITEM_ARGUMENT` 的 `"体"+数字`
 //    (battle_item.c:245/289)取出 `power` 后经 `loadItemEffects` 注入;当前由 fixture 注入。
 // ★ 只做 HP 恢复药:MP / 状态 / 变身 / 传送 等其余 usefunc 依赖未移植子系统,不在本表(DR-DT23)。
-// ★ 道具效果表的一行 (阶段 5.1 扩充 MP 与道具精灵)
+// ★ 道具效果表的一行 (阶段 5.1 扩充 MP 与道具精灵；P2 扩充场景使用)
+// ★ 只做 HP 恢复药:MP / 状态 / 变身 / 传送 等其余 usefunc 依赖未移植子系统,不在本表(DR-DT23)。
+//    P2 更新：MP恢复、状态解除、传送已实现，见下方字段。
 struct ItemEffect
 {
 	std::int32_t item_id = 0;                                           // 道具表主键(= Item::item_id 的匹配键)
@@ -1105,6 +1112,13 @@ struct ItemEffect
 	SA::Rules::MagicElement item_spell_element = SA::Rules::MagicElement::Earth;
 	std::int32_t item_spell_power = 0;
 	std::int32_t item_spell_magic_level = 1;
+	// ── P2: 场景内使用 (移植 item_event.c) ──
+	bool field_usable = false;   // 场景内可使用 (ITEM_useRecovery_Field)
+	bool cures_status = false;   // 解除状态异常 (ITEM_useStatusRecovery)
+	bool is_warp = false;        // 传送道具 (ITEM_useWarp)
+	std::int32_t warp_floor = 0; // 传送目的地
+	std::int32_t warp_x = 0;
+	std::int32_t warp_y = 0;
 };
 
 // 魔法与精灵术效果表的一行 (阶段 5.1)
@@ -1861,6 +1875,20 @@ class World final : public SA::Net::TransportEvents,
 	//    背包满 / 道具池满)返 −1,且**世界一个字节都没动**(门在任何写之前,同捕获三门)。
 	int giveItemToPlayer(SA::Net::SessionId session, const SA::Model::Item &item);
 
+	// 场景内使用道具 (P2, 移植 item_event.c 的 ITEM_use* 系列)。
+	//
+	// 原版 CHAR_ItemUse (char_item.c:738) 按 ITEM_USEFUNC 分发：
+	//   - ITEM_useRecovery → 战斗/场景调度 → ITEM_useRecovery_Field (item_event.c:686)
+	//   - ITEM_useStatusRecovery → 解状态 (item_event.c:1216)
+	//   - ITEM_useWarp → 传送 (item_event.c:1960)
+	//   - ITEM_useMagic → 魔法卷轴 (item_event.c:1107, 仅战斗)
+	//
+	// 本方法处理**场景内**使用。战斗内使用走 Battle 的 USE_ITEM 命令。
+	// 参数：session=使用者, item_slot=背包槽位, target_is_pet + target_index=目标
+	// 返回：0=成功, <0=失败（无玩家/空槽/道具不可用/目标无效）
+	int useItemInField(SA::Net::SessionId session, int item_slot,
+	                   bool target_is_pet = false, int target_index = 0);
+
 	// 往某会话玩家的宠物槽放一只宠物(批次 B2 的**注入 seam**)。
 	//
 	// ★★ 与 `giveItemToPlayer` 完全同性质:是个**灌入点**,不是玩法。宠物唯一的
@@ -2112,6 +2140,12 @@ class World final : public SA::Net::TransportEvents,
 	bool checkAndGrantElderTitles(SA::Net::SessionId session, std::uint64_t oldman_npc_id);
 	bool fmHealPlayer(SA::Net::SessionId session, std::uint64_t fm_healer_npc_id);
 	bool warpByTranserMan(SA::Net::SessionId session, std::uint64_t transer_npc_id, std::size_t route_index);
+
+	// ── NPC 长尾第一批 (阶段 19 NPC:PetMaker, LuckyMan) ─────
+	bool handlePetMakerTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleLuckyManTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool confirmLuckyMan(SA::Net::SessionId id, std::uint64_t npc_id);
+	std::string getNpcArgStr(const std::string &argstr, const std::string &key);
 
 	// ── 地下城多层迷宫与漆黑洞窟视野探险系统 (阶段 18 §9.0.134, S20 地图运行时扩展) ─────
 	bool registerDungeon(const DungeonDefinition &dungeon);
@@ -2906,6 +2940,8 @@ enum class GoldReason : std::uint8_t
 	kGmAdjust,
 	// 美容师 NPC 提升魅力服务费扣除 (汇, 阶段 17 NPC:Charm)
 	kCharmFee,
+	// 占卜师 NPC 占卜费用扣除 (汇, 阶段 19 NPC:LuckyMan)
+	kLuckyManFee,
 };
 
 // ── 溢出处置结果(DR-EC4:必须有名字)──────────────────────────────────
@@ -3060,6 +3096,8 @@ inline const char *goldReasonName(GoldReason r) noexcept
 		return "gm_adjust";
 	case GoldReason::kCharmFee:
 		return "charm_fee";
+	case GoldReason::kLuckyManFee:
+		return "luckyman_fee";
 	}
 	return "unknown";
 }

@@ -926,3 +926,26 @@ TEST_CASE("宠物店卖宠价格:原版 NPC_GetCost 公式")
 	// cost=1090×1.2=1308 ×0.3=392（1308×0.3=392.4→392）
 	CHECK(computePetSellPrice(in) == 392);
 }
+
+TEST_CASE("P2: computeFieldRecovery - 场景内道具恢复")
+{
+	// 正常恢复：current=50, max=100, power=30 → new=80, recovered=30
+	auto r1 = computeFieldRecovery(50, 100, 30);
+	CHECK(r1.new_value == 80);
+	CHECK(r1.recovered == 30);
+
+	// 超上限钳制：current=90, max=100, power=30 → new=100, recovered=10
+	auto r2 = computeFieldRecovery(90, 100, 30);
+	CHECK(r2.new_value == 100);
+	CHECK(r2.recovered == 10);
+
+	// 最低 1：current=5, max=100, power=-10 → new=1, recovered=-4
+	auto r3 = computeFieldRecovery(5, 100, -10);
+	CHECK(r3.new_value == 1);
+	CHECK(r3.recovered == -4);
+
+	// 满血使用：current=100, max=100, power=30 → new=100, recovered=0
+	auto r4 = computeFieldRecovery(100, 100, 30);
+	CHECK(r4.new_value == 100);
+	CHECK(r4.recovered == 0);
+}

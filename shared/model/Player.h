@@ -96,6 +96,18 @@ struct Player
 	//   读它自动带宠。M.1/M.2 按「不建没人用的字段」纪律留白,本批补上写者后解禁。
 	std::int32_t default_pet = -1;
 
+	// 骑乘的宠物在 `pets[]` 中的下标(原 `CHAR_RIDEPET`,char_base.h:505)。-1 = 未骑乘。
+	//
+	// ★ 8.0 语义:骑乘时战斗三围按 `BATTLE_adjustRidePet3A` 调整
+	//   (battle_event.c:245-290,正常版 + _BATTLE_NEWPOWER):
+	//   - 攻击:投掷武器 → 人物攻击 + 宠攻×0.4;近战 → 人攻×0.8 + 宠攻×0.8
+	//   - 防御:(人防 + 宠防)/2 → 实际为 人防×0.7 + 宠防×0.7
+	//   - 敏捷(攻击方):投掷 → 人敏×0.8 + 宠敏×0.2;近战 → 人敏×0.2 + 宠敏×0.8
+	//   - 敏捷(防御方):人敏×0.1 + 宠敏×0.9
+	// ★ 骑宠经验 ×0.6(battle.c:5080,`nowexp *= 0.6`)。
+	// ★ 落马(被特定技能击中)时清 -1(battle.c:7835-7836,7873-7874)。
+	std::int32_t ride_pet = -1;
+
 	// 累计捕获数(原 `CHAR_GETPETCOUNT`,源码 `battle_event.c:3543`)。
 	std::int32_t capture_count = 0;
 

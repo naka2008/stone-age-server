@@ -444,6 +444,13 @@ struct World::Impl : GoldAuditSink
 			std::size_t route_idx = 0;
 		};
 		PendingTranser pending_transer{};
+		// ── 阶段 19: 占卜师待决 (NPC:LuckyMan) ──
+		struct PendingLucky
+		{
+			std::uint64_t npc_id = 0;
+			int cost = 0;
+		};
+		PendingLucky pending_lucky{};
 	};
 
 	Impl(const SA::Platform::ServerConfig &cfg, SA::Platform::Clock &clk,

@@ -343,7 +343,8 @@ struct CombatModifiers
 	//    ⇒ 这是**可观察的玩法事实,不是崩溃**,照抄(`05` §4.5 要求 ①)。
 	//    ⇒ 本批只做 1..11(索引 0 = NONE 不用),数组开到 `kStatusResistCount`;
 	//      将来扩到全 44 种时,**上限仍是 31 而不是 44** —— 别"顺手补齐"。
-	std::int32_t status_resist[12] = {};
+	// ★ P4 (2026-10-22):扩到 31,覆盖状态 12..30。31..43 抵抗恒 0(原版越界防护)。
+	std::int32_t status_resist[31] = {};
 
 	// ★★ **守方四元素抗性**(原 `CHAR_EARTH_RESIST`..`CHAR_WIND_RESIST`,
 	//    `battle_magic.c:1085` `fResist = CHAR_EARTH_RESIST + nFieldAttr`)。
@@ -370,6 +371,21 @@ struct CombatModifiers
 
 	// 原 CHAR_WORKRENOCAST；同样受不可达的 CHAR_WORKWEAKEN 比较控制。
 	std::int32_t suit_resist_weaken = 0;
+
+	// ── P4 状态每回合效果参数 (2026-10-22) ─────────────────────
+	// 原版 `CHAR_WORKMOD*` 系列,施加时由技能写入,每回合结算时读取。
+	// ★ 这些是"施加者侧"的参数,投影到"承受者"的 Combatant 上(原版存在
+	//    承受者的 work 字段里)。
+	std::int32_t icecrack_value = 0;     // CHAR_WORKMODICECRACK: 冰爆术伤害值
+	std::int32_t icearrow_rate = 0;      // CHAR_WORKMODICEARROW: 冰箭减敏百分比
+	std::int32_t bloodworms_level = 0;   // CHAR_WORKMODBLOODWORMS: 嗜血蛊技能等级
+	std::int32_t bloodworms_caster = -1; // CHAR_WORKBLOODWORMSID: 施蛊者索引
+	std::int32_t sign_level = 0;         // CHAR_WORKMODSIGN: 一针见血技能等级
+	std::int32_t sign_caster = -1;       // CHAR_WORKSIGNID: 施术者索引
+	std::int32_t instigate_rate = 0;     // CHAR_WORKMODINSTIGATE: 挑拨降攻防敏百分比
+	std::int32_t mod_resist_f = 0;       // CHAR_WORKMODRESIST_F: 火抗增加值(解除时恢复)
+	std::int32_t mod_resist_i = 0;       // CHAR_WORKMODRESIST_I: 冰抗增加值
+	std::int32_t mod_resist_t = 0;       // CHAR_WORKMODRESIST_T: 雷抗增加值
 
 	// ── 魔法与精灵术参数投影 (阶段 5.1) ───────────────────────
 	SpellKind spell_kind = SpellKind::kNone;

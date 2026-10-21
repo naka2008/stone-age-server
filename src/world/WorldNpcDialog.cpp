@@ -1798,6 +1798,21 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 						ok = true;
 					}
 				}
+				else if (npc.type == NpcType::kPetMaker)
+				{
+					// 宠物制造者 (阶段 19 NPC:PetMaker, 原版 npc_petmaker.c:28-80)
+					//   门 ①: 声望 >= 200000 (原版 CHAR_FAME, 显示为 /100 即 2000 点)
+					//   门 ②: 事件旗标 118 未设置 (原版 EVFLG 118, 青龙)
+					//   门 ③: 宠物栏有空位
+					//   通过 ⇒ 从敌方 ID 1845 创建传说宠物, 置事件旗标
+					ok = handlePetMakerTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kLuckyMan)
+				{
+					// 占卜师 (阶段 19 NPC:LuckyMan, 原版 npc_luckyman.c:34-70)
+					//   弹出 YES/NO 窗口, 费用从 npc_argstr 的 Stone 键读取 (支持 LV*N 或固定值)
+					ok = handleLuckyManTalk(id, npc.id);
+				}
 			}
 		}
 	}
@@ -2235,6 +2250,21 @@ void World::onWindowReply(SA::Net::SessionId id, const SA::Domain::WindowReply &
 			if (is_yes || has_choice)
 			{
 				(void)warpByTranserMan(id, pending.npc_id, chosen_route);
+				return;
+			}
+		}
+
+		// 检查待决占卜师确认 (阶段 19 NPC:LuckyMan, 原版 npc_luckyman.c:135-180)
+		if (it->second.pending_lucky.npc_id != 0 &&
+		    (reply.source.entity_id == 0 || it->second.pending_lucky.npc_id == reply.source.entity_id))
+		{
+			const auto pending = it->second.pending_lucky;
+			it->second.pending_lucky = {};
+
+			const bool is_yes = (reply.button & static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_YES)) != 0;
+			if (is_yes)
+			{
+				(void)confirmLuckyMan(id, pending.npc_id);
 				return;
 			}
 		}
@@ -3108,6 +3138,319 @@ bool World::warpByTranserMan(SA::Net::SessionId session, std::uint64_t transer_n
 
 	std::string dest_str = route.dest_name.empty() ? "目的地" : route.dest_name;
 	s.sendExChangeWindow(session, transer_npc_id, "特使传送术发动！已平安抵达【" + dest_str + "】！",
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── 阶段 19: NPC 长尾第一批 ──────────────────────────────────────
+
+// 宠物制造者对话处理 (原版 npc_petmaker.c:28-80)
+//
+// 原版逻辑:
+//   ① 声望 >= 200000 (CHAR_FAME) 才给, 否则提示声望不足
+//   ② 事件旗标 118 (EVFLG) 已设置 ⇒ 提示"给过你了"
+//   ③ 宠物栏满 ⇒ 提示无空间
+//   ④ 通过 ⇒ pet_make(talker, "1845"): 从敌方 ID 1845 创建传说宠物, 置事件旗标
+bool World::handlePetMakerTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kPetMaker)
+		return false;
+
+	// 门 ①: 声望检查 (原版 npc_petmaker.c:57, CHAR_FAME >= 200000)
+	//   原版显示为 /100 (即 2000 点), 这里用原始值比较
+	const int fame = playerFame(id);
+	if (fame < 200000)
+	{
+		std::string msg = "抱歉哦～你目前个人声望 " + std::to_string(fame / 100) +
+		                  " 点，请等到超过二千点时再来找我吧！";
+		s.sendExChangeWindow(id, npc->id, msg,
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return true;
+	}
+
+	// 门 ②: 事件旗标 118 检查 (原版 npc_petmaker.c:35-36, EVFLG 118, 青龙)
+	constexpr int kEvflg = 118;
+	if (p->hasEndEvent(kEvflg))
+	{
+		s.sendExChangeWindow(id, npc->id, "哦～我记得我好像给过你了吧！",
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return true;
+	}
+
+	// 门 ③: 宠物栏空位检查 (原版 npc_petmaker.c:64-69)
+	const int pet_slot = p->findFreePetSlot();
+	if (pet_slot < 0)
+	{
+		s.sendExChangeWindow(id, npc->id, "抱歉～没多馀的空间可放置宠物。",
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return true;
+	}
+
+	// 通过: 创建传说宠物 (原版 pet_make(talker, "1845"), npc_petmaker.c:71,83-122)
+	//   从敌方 ID 1845 创建宠物, 基础属性按传说宠物给定
+	const auto h = s.pets.allocate();
+	if (!h.valid())
+		return false;
+
+	auto *dst = s.pets.resolve(h);
+	if (dst == nullptr)
+	{
+		s.pets.release(h);
+		return false;
+	}
+
+	dst->uid = ++s.next_window_id;
+	dst->pet_id = 1845; // 原版 pet_make 的 enemyid 参数
+	dst->name.assign("传说宠物");
+	dst->level = 1;
+	// 传说宠物基础四维 (原版 ENEMY_createPetFromEnemyIndex 按敌方表生成,
+	//   此处用合理默认值; 满血满魔)
+	dst->vital = 20;
+	dst->str = 20;
+	dst->tough = 20;
+	dst->dex = 20;
+	const auto base = SA::Rules::deriveBaseStats(dst->vital, dst->str, dst->tough, dst->dex);
+	dst->hp = base.max_hp;
+	// 注意: Pet 模型无 max_hp 字段 (原版不拷 MAXHP, 见 Pet.h:69)
+	// MP 按体力推导 (原版 CHAR_initcharWorkInt 另有公式, 此处用简化值)
+	dst->mp = dst->vital * 10;
+	dst->max_mp = dst->mp;
+	dst->owner = s.player_of_session.find(id);
+	dst->owner_char_name = p->name;
+
+	p->pets[static_cast<std::size_t>(pet_slot)] = h;
+
+	// 置事件旗标 (原版 npc_petmaker.c:73-74)
+	p->setEndEvent(kEvflg);
+
+	s.sendExChangeWindow(id, npc->id, "哦～以你的能力足以配得上一只传说宠物，好吧！就是你了。",
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 占卜师对话处理 (原版 npc_luckyman.c:34-70)
+//
+// 原版逻辑:
+//   ① 弹出 YES/NO 窗口, 显示费用 (argstr "Stone" 键, 支持 "LV*N" 或固定值)
+//   ② YES ⇒ 检查石币, 扣除, 从 "luck{CHAR_LUCK}" 键的逗号分隔列表随机选一条运势显示
+//   ③ NO ⇒ 关闭窗口
+//   ④ 石币不足 ⇒ 显示 "NoMoney" 键文案
+//
+// 本实现: 对话时直接弹出 YES/NO 窗口; 回调在 onWindowReply 中处理
+bool World::handleLuckyManTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kLuckyMan)
+		return false;
+
+	// 解析费用 (原版 NPC_GetMoney, npc_luckyman.c:222-235)
+	//   "LV*N" ⇒ 玩家等级 * N; 否则为固定值
+	int cost = 0;
+	std::string stone_cfg = getNpcArgStr(npc->npc_argstr, "Stone");
+	if (!stone_cfg.empty())
+	{
+		const std::size_t lv_pos = stone_cfg.find("LV");
+		if (lv_pos != std::string::npos)
+		{
+			const std::size_t star = stone_cfg.find('*', lv_pos);
+			if (star != std::string::npos)
+			{
+				const int mult = std::atoi(stone_cfg.substr(star + 1).c_str());
+				cost = p->level * mult;
+			}
+		}
+		else
+		{
+			cost = std::atoi(stone_cfg.c_str());
+		}
+	}
+
+	// 主文案 (原版 npc_luckyman.c:64-67, main_msg 中的 %s 填费用)
+	std::string main_msg = getNpcArgStr(npc->npc_argstr, "main_msg");
+	if (main_msg.empty())
+		main_msg = "要占卜今日的运势吗？需要 %s 石币。";
+	// 简单替换 %s 为费用
+	std::string prompt = main_msg;
+	const std::size_t ph = prompt.find("%s");
+	if (ph != std::string::npos)
+		prompt.replace(ph, 2, std::to_string(cost));
+
+	// 记录待决占卜 (费用存入 pending, 回调时用)
+	it->second.pending_lucky.npc_id = npc->id;
+	it->second.pending_lucky.cost = cost;
+
+	// 弹出 YES/NO 窗口 (原版 NPC_LuckyMan_selectWindow case 2, npc_luckyman.c:90-98)
+	SA::Domain::WindowOpen win{};
+	win.window_id = ++s.next_window_id;
+	win.kind = SA::Domain::WindowKind::WINDOW_KIND_MESSAGE;
+	win.buttons = static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_YES) |
+	              static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_NO);
+	win.source.source = SA::Domain::EntitySource::ENTITY_SOURCE_ENTITY;
+	win.source.entity_id = static_cast<std::uint32_t>(npc->id);
+	win.body_kind = SA::Domain::WindowOpen::BodyKind::MESSAGE;
+	win.body.message.wide = false;
+
+	std::string title = "　　　　　　　　☆占卜师☆　\n\n" + prompt;
+	if (auto *slot = win.body.message.lines.push_back())
+		slot->assign(title.data(), std::min<std::size_t>(title.size(), 255));
+
+	it->second.active_window_id = win.window_id;
+	it->second.active_window_npc_id = npc->id;
+	it->second.last_window_text = title;
+
+	s.sendTo(id, win);
+	return true;
+}
+
+// 从 NPC argstr 配置串中提取指定键的值 (原版 NPC_Util_GetStrFromStrWithDelim)
+//   格式: "key1=value1;key2=value2" 或 "key1:value1,key2:value2"
+std::string World::getNpcArgStr(const std::string &argstr, const std::string &key)
+{
+	std::size_t pos = 0;
+	while (pos < argstr.size())
+	{
+		// 跳过分隔符
+		while (pos < argstr.size() && (argstr[pos] == ';' || argstr[pos] == ',' || argstr[pos] == ' '))
+			++pos;
+		if (pos >= argstr.size())
+			break;
+
+		// 找键
+		const std::size_t eq = argstr.find('=', pos);
+		if (eq == std::string::npos)
+			break;
+		std::string k = argstr.substr(pos, eq - pos);
+		// 去空格
+		k.erase(0, k.find_first_not_of(" "));
+		k.erase(k.find_last_not_of(" ") + 1);
+
+		// 找值结束
+		std::size_t val_end = argstr.find(';', eq + 1);
+		if (val_end == std::string::npos)
+			val_end = argstr.size();
+		std::string v = argstr.substr(eq + 1, val_end - eq - 1);
+		v.erase(0, v.find_first_not_of(" "));
+		if (!v.empty())
+			v.erase(v.find_last_not_of(" ") + 1);
+
+		if (k == key)
+			return v;
+		pos = val_end + 1;
+	}
+	return "";
+}
+
+// 占卜师确认处理 (原版 NPC_LuckyManWindowTalked, npc_luckyman.c:135-180)
+//
+// 原版逻辑:
+//   ① YES ⇒ 重新解析费用, 检查石币 (NPC_LuckyCostCheck)
+//   ② 石币不足 ⇒ 显示 NoMoney 文案 (selectWindow case 3)
+//   ③ 充足 ⇒ 扣除石币 (CHAR_DelGold), 显示随机运势 (NPC_LuckyDisp)
+//   ④ 运势从 "luck{CHAR_LUCK}" 键的逗号分隔列表随机选一条
+bool World::confirmLuckyMan(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kLuckyMan)
+		return false;
+
+	// 重新解析费用 (原版 npc_luckyman.c:145-165, 防止客户端篡改)
+	int cost = 0;
+	std::string stone_cfg = getNpcArgStr(npc->npc_argstr, "Stone");
+	if (!stone_cfg.empty())
+	{
+		const std::size_t lv_pos = stone_cfg.find("LV");
+		if (lv_pos != std::string::npos)
+		{
+			const std::size_t star = stone_cfg.find('*', lv_pos);
+			if (star != std::string::npos)
+			{
+				const int mult = std::atoi(stone_cfg.substr(star + 1).c_str());
+				cost = p->level * mult;
+			}
+		}
+		else
+		{
+			cost = std::atoi(stone_cfg.c_str());
+		}
+	}
+
+	// 门: 石币检查 (原版 NPC_LuckyCostCheck, npc_luckyman.c:213-221)
+	if (p->gold < cost)
+	{
+		std::string no_money = getNpcArgStr(npc->npc_argstr, "NoMoney");
+		if (no_money.empty())
+			no_money = "石币不足唷！";
+		s.sendExChangeWindow(id, npc->id, no_money,
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return true;
+	}
+
+	// 扣除石币 (原版 CHAR_DelGold, npc_luckyman.c:167)
+	if (cost > 0)
+	{
+		const GoldTx tx = delGold(*p, GoldReason::kLuckyManFee, cost,
+		                          /*trans=*/0, static_cast<std::uint64_t>(id), s);
+		if (tx.disposition != GoldDisposition::kApplied)
+			return false;
+	}
+
+	// 随机运势 (原版 NPC_LuckyDisp, npc_luckyman.c:183-211)
+	//   键名: "luck{CHAR_LUCK}", 值为逗号分隔的运势列表, 随机选一条
+	//   注意: Player 模型暂无 luck 字段, 用 1 代替 (原版 CHAR_LUCK 默认 1)
+	const int luck = 1;
+	std::string luck_key = "luck" + std::to_string(luck);
+	std::string luck_list = getNpcArgStr(npc->npc_argstr, luck_key);
+
+	std::string fortune;
+	if (!luck_list.empty())
+	{
+		// 按逗号切分
+		std::vector<std::string> candidates;
+		std::size_t start = 0;
+		while (start < luck_list.size())
+		{
+			const std::size_t comma = luck_list.find(',', start);
+			if (comma == std::string::npos)
+			{
+				candidates.push_back(luck_list.substr(start));
+				break;
+			}
+			candidates.push_back(luck_list.substr(start, comma - start));
+			start = comma + 1;
+		}
+		if (!candidates.empty())
+		{
+			// 随机选一条 (原版 rand()%i + 1, npc_luckyman.c:204)
+			const std::size_t idx = static_cast<std::size_t>(
+			    s.world_rng.randMod(static_cast<int>(candidates.size())));
+			fortune = candidates[idx];
+		}
+	}
+	if (fortune.empty())
+		fortune = "今日运势：大吉！";
+
+	// 显示运势窗口 (原版 NPC_LuckyMan_selectWindow case 1, npc_luckyman.c:76-88)
+	std::string title = "　　　　　　　☆今日的运势☆　\n\n" + fortune;
+	s.sendExChangeWindow(id, npc->id, title,
 	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 	return true;
 }

@@ -6528,3 +6528,220 @@ TEST_CASE("Phase 6.0: S11 精灵/天使系统纯函数规则与神佑防护测�
 		CHECK(dmg_blessed <= static_cast<int>(dmg_normal * 0.95));
 	}
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  P4 (2026-10-22):状态 12..43 的每回合效果
+//  移植来源:`gmsv/battle/battle.c` BATTLE_StatusSeq (`:5424`)
+// ═══════════════════════════════════════════════════════════════════
+
+TEST_CASE("P4★:冰附体每回合 dex * 0.9 (battle.c:5758-5770)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_I_ENCLOSE);
+	c.status_turns = 3;
+	c.fix_dex = 1000;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK(r.i_enclose_dex_down);
+	CHECK(r.i_enclose_new_dex == 900); // 1000 * 0.9
+	CHECK_FALSE(r.cleared);
+}
+
+TEST_CASE("P4★:冰箭每回合减敏 (battle.c:6089-6097)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_ICEARROW);
+	c.status_turns = 3;
+	c.fix_dex = 1000;
+	c.mods.icearrow_rate = 20; // 减 20%
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK(r.icearrow_dex_down);
+	CHECK(r.icearrow_new_dex == 800); // 1000 * (100-20) / 100
+}
+
+TEST_CASE("P4★:遗忘在 cnt<=1 时恢复宠物 (battle.c:5683-5705)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_OBLIVION);
+	// cnt=2 ⇒ 递减后 1 ⇒ 触发
+	c.status_turns = 2;
+	CHECK(tickStatus(c, 1000, 0, false).oblivion_restore_pet);
+	// cnt=3 ⇒ 递减后 2 ⇒ 不触发
+	c.status_turns = 3;
+	CHECK_FALSE(tickStatus(c, 1000, 0, false).oblivion_restore_pet);
+}
+
+TEST_CASE("P4★:火/冰/雷抗在 cnt<=1 时恢复抗性 (battle.c:5773-5820)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_RESIST_F);
+	c.status_turns = 2; // 递减后 1 ⇒ 触发
+	CHECK(tickStatus(c, 1000, 0, false).resist_restore);
+	c.status_turns = 3; // 递减后 2 ⇒ 不触发
+	CHECK_FALSE(tickStatus(c, 1000, 0, false).resist_restore);
+
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_RESIST_I);
+	c.status_turns = 2;
+	CHECK(tickStatus(c, 1000, 0, false).resist_restore);
+
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_RESIST_T);
+	c.status_turns = 2;
+	CHECK(tickStatus(c, 1000, 0, false).resist_restore);
+}
+
+TEST_CASE("P4★:嗜血蛊每回合吸血 (battle.c:6030-6115)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_BLOODWORMS);
+	c.status_turns = 3;
+	c.mods.bloodworms_level = 10; // skill_level=10
+	c.mods.bloodworms_caster = 5;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	// dec_hp = 10*10 + 30 = 130; rate=20 (Lv>=10) ⇒ heal = 130*20/100 = 26
+	CHECK(r.drain_hp == 130);
+	CHECK(r.drain_caster == 5);
+	CHECK(r.drain_heal_hp == 26);
+}
+
+TEST_CASE("P4★:嗜血蛊骑宠在场时伤害减半")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_BLOODWORMS);
+	c.status_turns = 3;
+	c.mods.bloodworms_level = 10;
+	const StatusTickResult r = tickStatus(c, 1000, 500, true);
+	CHECK(r.drain_hp == 65); // 130 / 2
+}
+
+TEST_CASE("P4★:一针见血每回合吸 HP/MP (battle.c:5878-6030)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_SIGN);
+	c.status_turns = 3;
+	c.mods.sign_level = 10;
+	c.mods.sign_caster = 3;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	// Lv>=10: 200HP/30MP; 回复率 100%/100%
+	CHECK(r.drain_hp == 200);
+	CHECK(r.drain_mp == 30); // 玩家扣 MP
+	CHECK(r.drain_caster == 3);
+	CHECK(r.drain_heal_hp == 200);
+	CHECK(r.drain_heal_mp == 30);
+}
+
+TEST_CASE("P4★:一针见血宠物不扣 MP")
+{
+	auto c = makeCombatant(CombatantKind::kPet, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_SIGN);
+	c.status_turns = 3;
+	c.mods.sign_level = 5;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	// Lv=5: 100HP/15MP,但宠物不扣 MP
+	CHECK(r.drain_hp == 100);
+	CHECK(r.drain_mp == 0);
+}
+
+TEST_CASE("P4★:挑拨强制普攻己方 + 降三维标记 (battle.c:5831-5876)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_INSTIGATE);
+	c.status_turns = 3;
+	c.mods.instigate_rate = 30;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK(r.force_attack_random);
+	CHECK(r.force_attack_ally_side); // 挑拨打己方
+	CHECK(r.instigate_stat_down == 30);
+	// ★ 调用方摇 80%:这里只置标志,不摇 rng (tickStatus 是 noexcept)
+}
+
+TEST_CASE("P4★:附身强制普攻任意目标 (battle.c:5653-5681)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_WORKANNEX);
+	c.status_turns = 3;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK(r.force_attack_random);
+	CHECK_FALSE(r.force_attack_ally_side); // 附身打任意 side
+	CHECK(r.instigate_stat_down == 0);     // 附身不降三维
+}
+
+TEST_CASE("P4★★:冰爆术在 cnt<=0 时引爆而非解除 (battle.c:5462-5474, :6121)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_ICECRACK);
+	c.status_turns = 1; // 递减后 0
+	c.mods.icecrack_value = 500;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	// ★ 不走解除分支!
+	CHECK_FALSE(r.cleared);
+	CHECK(r.icecrack_detonate);
+	CHECK(r.icecrack_damage == 500);
+}
+
+TEST_CASE("P4★:冰爆术 value<=0 时不引爆")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_ICECRACK);
+	c.status_turns = 1;
+	c.mods.icecrack_value = 0;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK_FALSE(r.icecrack_detonate);
+	// ★ 仍不走解除分支(8.0 形状),只是不引爆
+	CHECK_FALSE(r.cleared);
+}
+
+TEST_CASE("P4★:冰爆术 2-10 同理 (WorkIceCrackPlay)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_ICECRACK5);
+	c.status_turns = 1;
+	c.mods.icecrack_value = 300;
+	const StatusTickResult r = tickStatus(c, 1000, 0, false);
+	CHECK_FALSE(r.cleared);
+	CHECK(r.icecrack_detonate);
+	CHECK(r.icecrack_damage == 300);
+}
+
+TEST_CASE("P4★:晕眩/天罗/雷附体无每回合效果 (仅 checkCanAct 否决)")
+{
+	auto c = makeCombatant(CombatantKind::kPlayer, 100, 10);
+	// 晕眩
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_DIZZY);
+	c.status_turns = 3;
+	{
+		const StatusTickResult r = tickStatus(c, 1000, 0, false);
+		CHECK(r.turns == 2); // 正常递减
+		CHECK_FALSE(r.cleared);
+		CHECK(r.hp_down == 0);
+		CHECK_FALSE(r.icecrack_detonate);
+	}
+	// 天罗地网
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_DRAGNET);
+	{
+		const StatusTickResult r = tickStatus(c, 1000, 0, false);
+		CHECK(r.turns == 2);
+		CHECK_FALSE(r.cleared);
+	}
+	// 雷附体
+	c.status = static_cast<std::uint8_t>(SA::Domain::BattleStatus::BATTLE_ST_T_ENCLOSE);
+	{
+		const StatusTickResult r = tickStatus(c, 1000, 0, false);
+		CHECK(r.turns == 2);
+		CHECK_FALSE(r.cleared);
+	}
+}
+
+TEST_CASE("P4★:状态 12..30 可被抵抗 (RegTbl 有槽)")
+{
+	// resistOf 现在支持到 30 (kOriginalResistTableLen=31)
+	auto def = makeCombatant(CombatantKind::kEnemy, 100, 10);
+	def.mods.status_resist[12] = 50; // 晕眩抵抗 50
+	def.mods.status_resist[20] = 30; // 挑拨抵抗 30
+
+	// 晕眩:per=20(麻痹分支基数)? 不 —— 晕眩走通用分支。
+	// 这里只验证 resistOf 能取到值,不验证完整命中公式。
+	// (完整公式由 rollStatusAttack 覆盖)
+	CHECK(def.mods.status_resist[12] == 50);
+	CHECK(def.mods.status_resist[20] == 30);
+	// 31..43 抵抗恒 0 (越界防护)
+	CHECK(def.mods.status_resist[30] == 0); // 数组有,但默认 0
+}

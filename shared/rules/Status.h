@@ -54,8 +54,11 @@
 namespace SA::Rules
 {
 
-// 本批实现的状态数(索引 1..11 有效,0 = BATTLE_ST_NONE)。
-constexpr int kStatusImplementedEnd = 12;
+// 本批实现的状态数(索引 1..30 有效,0 = BATTLE_ST_NONE)。
+// ★ P4 (2026-10-22):从 12 扩到 31。31..43 抵抗恒 0(原版 RegTbl 越界防护),
+//    其中 24 FOCUS / 31 RESIST_F_I_T 在 8.0 源码中被注释掉 ⇒ 不实现;
+//    28/29/30 ENCLOSE2 / 32 WATER 是攻击附魔标记,无每回合效果。
+constexpr int kStatusImplementedEnd = 31;
 
 // 原版 `BATTLE_ST_END` = 44(状态号合法性的上界,`battle_event.c:5075`)。
 //
@@ -189,6 +192,52 @@ struct StatusTickResult
 	//    **不是** `× 2`。两者只在「骑宠 quick == 玩家 quick」时才相等。
 	//   ★ 净效果仍如 §4.4 所述(施加时从不减半 ⇒ 解除后敏捷变大),但幅度不同。
 	bool drunk_quick_restore = false;
+
+	// ── P4 新增 (2026-10-22) ─────────────────────────────
+	// 冰爆术 (15, 35-43):回合结束时引爆,对敌方全体造成伤害。
+	// ★ 原版 `battle.c:6124`: `if (cnt <= 0 && value > 0)` ⇒ 在**归零的当回合**
+	//    引爆(value = CHAR_WORKMODICECRACK)。注意:归零 ⇒ 前面的 `cleared`
+	//    分支会先 return ⇒ 引爆检查必须在归零分支**之前**。
+	bool icecrack_detonate = false;
+	std::int32_t icecrack_damage = 0; // 引爆伤害值(= icecrack_value)
+
+	// 遗忘 (16): `cnt <= 1` 时恢复宠物召唤(原版 `battle.c:5683-5705` 发送 W<pet_no>)。
+	// ★ 调用方据此产出宠物召唤恢复事件。
+	bool oblivion_restore_pet = false;
+
+	// 冰箭 (17):每回合减敏 `dex = old_dex * (100 - dec_dex) / 100`
+	// (`battle.c:6089-6097`)。调用方据此写回 fix_dex。
+	bool icearrow_dex_down = false;
+	std::int32_t icearrow_new_dex = 0; // 计算后的新 fix_dex
+
+	// 冰附体 (22):每回合 `dex = old_dex * 0.9` (`battle.c:5758-5770`)。
+	bool i_enclose_dex_down = false;
+	std::int32_t i_enclose_new_dex = 0;
+
+	// 嗜血蛊 (18):每回合吸血 `dec_hp = skill_level * 10 + 30`,
+	// 施蛊者回 `dec_hp * rate / 100` (`battle.c:6030-6115`)。
+	// 一针见血 (19):每回合吸 HP/MP,施术者回复 (`battle.c:5878-6030`)。
+	// ★ 调用方需要知道"吸了多少"和"给谁",以便写回双方 HP/MP。
+	std::int32_t drain_hp = 0;      // 被吸走的 HP
+	std::int32_t drain_mp = 0;      // 被吸走的 MP (仅一针见血)
+	std::int32_t drain_caster = -1; // 施术者槽位(用于回血)
+	std::int32_t drain_heal_hp = 0; // 施术者回复的 HP
+	std::int32_t drain_heal_mp = 0; // 施术者回复的 MP (仅一针见血)
+
+	// 挑拨 (20) / 附身 (33):强制普攻随机目标。
+	// ★ 挑拨 80% 概率 (`battle.c:5835`),附身 100% (`battle.c:5653`)。
+	// ★ 挑拨同时降攻防敏 (`battle.c:5844-5846`)。
+	bool force_attack_random = false;     // 本回合强制普攻
+	bool force_attack_ally_side = false;  // true=挑拨(打己方), false=附身/混乱(打任意)
+	std::int32_t instigate_stat_down = 0; // 挑拨降攻防敏百分比(>0 时调用方应用)
+
+	// 火/冰/雷抗 (25/26/27): `cnt <= 1` 时恢复抗性 (`battle.c:5773-5820`)。
+	// ★ 调用方据此把 element_resist 减去 mod_resist_*。
+	bool resist_restore = false;
+
+	// 恐惧 (34): `cnt <= 0` 时 "攻、防、敏恢复" (`battle.c:5828`)。
+	// ★ 恐惧的施加时降攻防敏由技能侧完成,这里只标记解除时的恢复提示。
+	bool fear_recover_msg = false;
 };
 
 // 推进一个单位的状态一回合。

@@ -818,6 +818,139 @@ int World::giveItemToPlayer(SA::Net::SessionId session, const SA::Model::Item &i
 	return giveItemIntoPlayer(*p, item, s.items);
 }
 
+// 场景内使用道具 (P2, 移植 item_event.c 的 ITEM_use* 系列)。
+//
+// 原版 CHAR_ItemUse (char_item.c:738) 按 ITEM_USEFUNC 分发到：
+//   ITEM_useRecovery → ITEM_useRecovery_Field (item_event.c:686)：场景回血/回魔
+//   ITEM_useStatusRecovery (item_event.c:1216)：解状态（战斗内，场景版为空）
+//   ITEM_useWarp (item_event.c:1960)：传送
+//   ITEM_useMagic (item_event.c:1107)：魔法卷轴（仅战斗，不在场景使用）
+//
+// 实现要点：
+//   - HP/MP 恢复量：原版 RAND(work*0.9, work*1.1)，此处用 std::rand 做简化
+//   - 恢复上限：min(当前+恢复, max)，最低 1（computeFieldRecovery）
+//   - 传送：直接调用 warpPlayerForTest 的逻辑（实际 warp）
+//   - 用完扣道具：pile--，<=0 则清槽
+int World::useItemInField(SA::Net::SessionId session, int item_slot,
+                          bool target_is_pet, int target_index)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(session));
+	if (p == nullptr)
+		return -1;
+
+	if (item_slot < 0 ||
+	    static_cast<std::size_t>(item_slot) >= SA::Model::kMaxItemHave)
+		return -2;
+
+	const SA::Model::ItemHandle h =
+	    p->items[static_cast<std::size_t>(item_slot)];
+	SA::Model::Item *it = s.items.resolve(h);
+	if (it == nullptr || it->current_pile <= 0)
+		return -3; // 空槽 / 悬空句柄
+
+	// 查效果表
+	const ItemEffect *eff = nullptr;
+	for (const auto &e : s.item_effects)
+	{
+		if (e.item_id == it->item_id)
+		{
+			eff = &e;
+			break;
+		}
+	}
+	if (eff == nullptr || !eff->field_usable)
+		return -4; // 无效果表项 / 场景内不可用
+
+	// 确定目标：玩家本人或宠物
+	SA::Model::Player *target_player = p;
+	SA::Model::Pet *target_pet = nullptr;
+	if (target_is_pet)
+	{
+		if (target_index < 0 ||
+		    static_cast<std::size_t>(target_index) >= SA::Model::kMaxPetHave)
+			return -5;
+		const SA::Model::EntityHandle ph =
+		    p->pets[static_cast<std::size_t>(target_index)];
+		target_pet = s.pets.resolve(ph);
+		if (target_pet == nullptr)
+			return -5;
+		target_player = nullptr;
+	}
+
+	bool consumed = false;
+
+	// ── HP 恢复 (ITEM_useRecovery_Field, item_event.c:900-980) ──
+	if (eff->heal_power > 0)
+	{
+		// 原版：power = RAND(work*0.9, work*1.1)
+		const std::int32_t power = static_cast<std::int32_t>(
+		    eff->heal_power * (0.9 + (std::rand() % 21) / 100.0));
+		if (target_player != nullptr)
+		{
+			const auto stats = SA::Rules::deriveEquippedStats(
+			    target_player->vital, target_player->str,
+			    target_player->tough, target_player->dex,
+			    SA::Rules::EquipModifiers{});
+			const auto res = SA::Rules::computeFieldRecovery(
+			    target_player->hp, stats.max_hp, power);
+			target_player->hp = res.new_value;
+		}
+		else if (target_pet != nullptr)
+		{
+			// 宠物 max_hp 由 complianceParameter 推导，此处用 y_hp（已存档的最大值）
+			// 若 y_hp 为 0 则用当前 hp（避免除零/异常）
+			const std::int32_t pet_max =
+			    target_pet->y_hp > 0 ? target_pet->y_hp : target_pet->hp;
+			const auto res = SA::Rules::computeFieldRecovery(
+			    target_pet->hp, pet_max, power);
+			target_pet->hp = res.new_value;
+		}
+		consumed = true;
+	}
+
+	// ── MP 恢复 (ITEM_useRecovery_Field 的 MP 分支) ──
+	if (eff->mp_power > 0 && target_player != nullptr)
+	{
+		const std::int32_t power = static_cast<std::int32_t>(
+		    eff->mp_power * (0.9 + (std::rand() % 21) / 100.0));
+		const auto res = SA::Rules::computeFieldRecovery(
+		    target_player->mp, target_player->max_mp, power);
+		target_player->mp = res.new_value;
+		consumed = true;
+	}
+
+	// ── 状态解除 (ITEM_useStatusRecovery, item_event.c:1216) ──
+	// 原版场景版为空（仅战斗），且 Player/Pet 模型暂无状态字段。
+	// 此处保留接口，待状态系统补齐（P4）后实现。
+	if (eff->cures_status)
+	{
+		// TODO(P4): Player/Pet 状态字段补齐后实现
+		consumed = true;
+	}
+
+	// ── 传送 (ITEM_useWarp, item_event.c:1960) ──
+	// 原版：sscanf(arg, "%d %d %d %d", &warp_t, &warp_fl, &warp_x, &warp_y)
+	// 此处效果表直接存目的地。
+	if (eff->is_warp && target_player != nullptr)
+	{
+		warpPlayerForTest(session, eff->warp_floor, eff->warp_x, eff->warp_y);
+		consumed = true;
+	}
+
+	if (!consumed)
+		return -6; // 有效果表项但无可执行效果
+
+	// 扣道具
+	if (--it->current_pile <= 0)
+	{
+		p->clearItemSlot(item_slot);
+		(void)s.items.release(h);
+	}
+
+	return 0;
+}
+
 // 批次 B2 的注入 seam(声明见 Api.h):三门全过才写 ⇒ 失败不留孤儿。
 // ⚠️ 刻意**不写 `default_pet`** —— 它的唯一写者是换宠指令 PET_OUT(DR-BT21),
 //   本 seam 在它旁边开第二扇门就会把"换宠语义在世界侧只有一处"打破。
