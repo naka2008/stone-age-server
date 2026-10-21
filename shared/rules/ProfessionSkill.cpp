@@ -142,10 +142,10 @@ constexpr std::array<ProfessionSkillInfo, 64> kProfessionSkills = {{
     {static_cast<std::uint32_t>(ProfessionSkillId::kInstigate), "PROFESSION_INSTIGATE", ProfessionClass::kHunter, ProfessionSkillCategory::kUtility, kComInstigate},
     {static_cast<std::uint32_t>(ProfessionSkillId::kOblivion), "PROFESSION_OBLIVION", ProfessionClass::kHunter, ProfessionSkillCategory::kUtility, kComOblivion},
 
-    // ── 共通 (3 项) ──
-    {static_cast<std::uint32_t>(ProfessionSkillId::kFullMp), "PROFESSION_FULL_MP", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
-    {static_cast<std::uint32_t>(ProfessionSkillId::kStrongBack), "PROFESSION_STRONG_BACK", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
-    {static_cast<std::uint32_t>(ProfessionSkillId::kStrengthen), "PROFESSION_STRENGTHEN", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0}, // 无原版指令码
+    // ── 共通 (3 项，无原版 BATTLE_COM 指令码，raw_command 置 0) ──
+    {static_cast<std::uint32_t>(ProfessionSkillId::kFullMp), "PROFESSION_FULL_MP", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0},
+    {static_cast<std::uint32_t>(ProfessionSkillId::kStrongBack), "PROFESSION_STRONG_BACK", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0},
+    {static_cast<std::uint32_t>(ProfessionSkillId::kStrengthen), "PROFESSION_STRENGTHEN", ProfessionClass::kNone, ProfessionSkillCategory::kUtility, 0},
 }};
 
 } // namespace
