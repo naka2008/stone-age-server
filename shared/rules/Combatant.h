@@ -351,6 +351,13 @@ struct CombatModifiers
 	//    用于魔法闪避 (`rollMagicDodge`) 与魔法伤害 (`computeMagicDamage`)。
 	std::int32_t element_resist[4] = {};
 
+	// ★★ **攻方三元素熟练度**(原 `CHAR_WORK_F/T/I_PROFICIENCY`,
+	//    `battle_magic.c:4785` `PROFESSION_MAGIC_GET_DAMAGE`)。
+	//    索引: 0=火 / 1=电 / 2=冰。用于职业魔法伤害修正。
+	//    ⚠️ 与 `prof_magic_proficiency` (巫师被动单值) 是两回事：
+	//       前者是火/电/冰三系独立熟练度，后者是巫师被动技能的通用加成。
+	std::int32_t element_proficiency[3] = {};
+
 	// ★ 守方「通用抗性」(原 `CHAR_WORKRESIST`,`_SUIT_ADDENDUM` 在 8.0 **开**,`:5136`)。
 	//   ⚠️ 与 `status_resist[]` 是两件事:前者对**所有**状态生效,后者逐状态。
 	std::int32_t general_resist = 0;

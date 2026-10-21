@@ -269,8 +269,11 @@ StatusTickResult tickStatus(const Combatant &c,
 	}
 	case static_cast<int>(BattleStatus::BATTLE_ST_F_ENCLOSE):
 	{
-		// 源码 battle.c:5722-5755: DAMAGE = 50 * cnt
-		r.hp_down = 50 * cnt;
+		// 源码 battle.c:5722-5755: DAMAGE = 50 * cnt，再过 PROFESSION_MAGIC_GET_DAMAGE
+		// 原版 battle.c:5737:
+		//   dec_hp = PROFESSION_MAGIC_GET_DAMAGE(charaindex, charaindex, 1, 50*cnt, 0)
+		// magic_type=1 (火)，攻守同体
+		r.hp_down = computeProfessionMagicDamage(1, 50 * cnt, c, c);
 		if (r.hp_down > hp)
 			r.hp_down = hp;
 		break;

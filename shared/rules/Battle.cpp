@@ -3143,6 +3143,54 @@ bool rollMagicDodge(bool is_player,
 	return rng.rand(1, 100) <= threshold;
 }
 
+// ── 职业魔法伤害修正 (原版 battle_magic.c:4785 PROFESSION_MAGIC_GET_DAMAGE) ──
+// magic_type: 1=火 / 2=电 / 3=冰
+// 原版 #else 分支 (rand_num=0 恒走原伤害分支):
+//   attack = power * (100 + proficiency) / 100
+//   attack = attack * (100 - resist) / 100
+std::int32_t computeProfessionMagicDamage(int magic_type,
+                                          int power,
+                                          const Combatant &attacker,
+                                          const Combatant &defender) noexcept
+{
+	// 熟练度索引: 火=0 / 电=1 / 冰=2 (对应 element_proficiency[3])
+	// 抗性索引: 火=2 / 水=1 / 地=0 / 风=3 (对应 element_resist[4], MagicElement 顺序)
+	// 注意原版 magic_type 1=火/2=电/3=冰，与 MagicElement 的地0/水1/火2/风3 不同
+	int prof_idx = -1;
+	int resist_idx = -1;
+	switch (magic_type)
+	{
+	case 1: // 火
+		prof_idx = 0;
+		resist_idx = 2; // MagicElement::Fire = 2
+		break;
+	case 2: // 电 (对应风元素抗性)
+		prof_idx = 1;
+		resist_idx = 3; // MagicElement::Wind = 3
+		break;
+	case 3: // 冰 (对应水元素抗性)
+		prof_idx = 2;
+		resist_idx = 1; // MagicElement::Water = 1
+		break;
+	default:
+		return power; // 未知类型，原版 attack = power
+	}
+
+	const int proficiency = attacker.mods.element_proficiency[prof_idx];
+	const int resist = defender.mods.element_resist[resist_idx];
+
+	// 攻击加成: power * (100 + proficiency) / 100
+	std::int32_t attack = static_cast<std::int32_t>(
+	    static_cast<std::int64_t>(power) * (100 + proficiency) / 100);
+	// 抗性减免: attack * (100 - resist) / 100
+	attack = static_cast<std::int32_t>(
+	    static_cast<std::int64_t>(attack) * (100 - resist) / 100);
+
+	if (attack < 0)
+		attack = 0;
+	return attack;
+}
+
 std::int32_t computeMagicDamage(MagicElement element,
                                 int att_magic_lv,
                                 int def_magic_resist,

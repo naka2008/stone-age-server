@@ -598,6 +598,17 @@ std::int32_t computeEarthMagicDamage(int att_magic_lv,
                                      Random &rng,
                                      int magic_level = 4) noexcept;
 
+// 职业魔法伤害修正 (原版 battle_magic.c:4785 PROFESSION_MAGIC_GET_DAMAGE)
+// magic_type: 1=火 / 2=电 / 3=冰 (原版枚举)
+// power: 基础威力
+// 攻方熟练度 (element_proficiency[magic_type-1]) 加成: power * (100 + prof) / 100
+// 守方抗性 (element_resist[对应元素]) 减免: * (100 - resist) / 100
+// ⚠️ suit (装备) 与 spirit (精灵) 暂按 0，装备/精灵系统未移植
+std::int32_t computeProfessionMagicDamage(int magic_type,
+                                          int power,
+                                          const Combatant &attacker,
+                                          const Combatant &defender) noexcept;
+
 // 水魔法伤害纯函数 (便捷单系入口)
 std::int32_t computeWaterMagicDamage(int att_magic_lv,
                                      int def_magic_resist,
