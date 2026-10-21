@@ -3114,28 +3114,28 @@ TEST_CASE("W.13: 宠物学习技能等级不足与学满拦截 (等级不足下�
 	npc.pet_skill_products = {skill1, skill2};
 	f.world.loadNpcEntities({npc});
 
-	// ① 等级不足拦截
+	// ★ #49：8.0 常规版无宠物等级门，低级宠也能学高级技能（扣费正常）
 	const bool learn1 = f.world.learnPetSkill(id, 7009, pet_slot, 20);
-	CHECK_FALSE(learn1);
-	CHECK(p->gold == 5000); // 零扣费
-	CHECK(f.world.playerLastWindowText(id) == "小家伙等级太低了，还学不会这么高级的技能！");
+	CHECK(learn1);
+	CHECK(p->gold == 4700); // 扣 300
+	const auto *pet = f.world.playerPetAt(id, pet_slot);
+	REQUIRE(pet != nullptr);
+	CHECK(pet->pet_skills[0] == 20);
 
 	// ② 成功学习低级技能 21
 	const bool learn2 = f.world.learnPetSkill(id, 7009, pet_slot, 21);
 	CHECK(learn2);
-	CHECK(p->gold == 4900); // 扣 100
-	const auto *pet = f.world.playerPetAt(id, pet_slot);
-	REQUIRE(pet != nullptr);
-	CHECK(pet->pet_skills[0] == 21);
+	CHECK(p->gold == 4600); // 再扣 100
+	CHECK(pet->pet_skills[1] == 21);
 
 	// ③ 重复技能拦截
 	const bool learn_dup = f.world.learnPetSkill(id, 7009, pet_slot, 21);
 	CHECK_FALSE(learn_dup);
-	CHECK(p->gold == 4900); // 零扣费
+	CHECK(p->gold == 4600); // 零扣费
 
 	// ④ 技能栏已满拦截: 将剩余 6 个槽位填满
 	auto *mutable_pet = const_cast<SA::Model::Pet *>(pet);
-	for (std::size_t i = 1; i < SA::Model::Pet::kPetSkillSlots; ++i)
+	for (std::size_t i = 2; i < SA::Model::Pet::kPetSkillSlots; ++i)
 	{
 		mutable_pet->pet_skills[i] = static_cast<std::int32_t>(100 + i);
 	}
@@ -3146,7 +3146,7 @@ TEST_CASE("W.13: 宠物学习技能等级不足与学满拦截 (等级不足下�
 
 	const bool learn_full = f.world.learnPetSkill(id, 7009, pet_slot, 22);
 	CHECK_FALSE(learn_full);
-	CHECK(p->gold == 4900); // 零扣费
+	CHECK(p->gold == 4600); // 零扣费
 	CHECK(f.world.playerLastWindowText(id) == "宠物脑子塞满了，装不下新技能了！");
 }
 
@@ -3183,27 +3183,27 @@ TEST_CASE("W.13: 宠物商店回收出售宠物成功与石币上限保护 (回�
 	CHECK(sold);
 	// 结算断言:
 	// - 宠物栏清空并释放
-	// - 金币入账: 200 + 600 = 800
+	// - 金币入账: 200 + 89 = 289（★ #46 新公式：level=5 → ((250-1)+50)×1×0.3=89）
 	CHECK(f.world.playerPetSlotsUsed(id) == 0);
 	CHECK(f.world.playerPetAt(id, pet_slot) == nullptr);
-	CHECK(p->gold == 800);
+	CHECK(p->gold == 289);
 
 	// ② 石币超上限保护拦截
-	// 给玩家一只新宠物，并将金币设为 999,900
+	// 给玩家一只新宠物，并将金币设为 999,950
 	const int slot2 = f.world.givePetToPlayer(id, makeTestPet(90, /*level=*/5));
 	REQUIRE(slot2 >= 0);
-	p->gold = 999900; // 回收得 600; 999,900 + 600 = 1,000,500 > 1,000,000
+	p->gold = 999950; // 回收得 89; 999,950 + 89 = 1,000,039 > 1,000,000
 
 	const bool sold_overflow = f.world.sellPetToShop(id, 7010, slot2);
 	CHECK_FALSE(sold_overflow);
 	// 拦截断言:
 	// - 拒绝出售 (返回 false)
 	// - 宠物依然完好保存在槽位中
-	// - 金币保持 999,900 零改动 (DR-EC3 拒绝)
+	// - 金币保持 999,950 零改动 (DR-EC3 拒绝)
 	// - 下发超上限提示语
 	CHECK(f.world.playerPetSlotsUsed(id) == 1);
 	CHECK(f.world.playerPetAt(id, slot2) != nullptr);
-	CHECK(p->gold == 999900);
+	CHECK(p->gold == 999950);
 	CHECK(f.world.playerLastWindowText(id) == "钱包满了，石币放不下了！");
 }
 

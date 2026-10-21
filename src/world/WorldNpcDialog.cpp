@@ -2407,22 +2407,20 @@ bool World::sellPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	if (pet == nullptr)
 		return false;
 
-	// 计算回购价格: 宠物原价 * sell_rate (保底 1 石币)
-	std::int32_t base_cost = 0;
-	for (const auto &prod : npc->pet_products)
-	{
-		if (prod.pet_id == pet->pet_id && prod.cost > 0)
-		{
-			base_cost = prod.cost;
-			break;
-		}
-	}
-	if (base_cost <= 0)
-	{
-		base_cost = std::max(1, pet->level * 100);
-	}
-
-	const std::int32_t unit_price = std::max(1, static_cast<std::int32_t>(base_cost * npc->sell_rate));
+	// ★ #46：卖宠价格按原版 NPC_GetCost 公式（npc_petshop.c:706-830）。
+	//   Pet 暂无 transmigration/rare/WORKFIXAI 字段，传 0（= 无转生/普通/无AI加成）。
+	SA::Rules::PetSellPriceInput price_in;
+	price_in.level = pet->level;
+	price_in.getlevel = pet->capture_level;
+	price_in.transmigration = 0;
+	price_in.rare = 0;
+	price_in.base_image = pet->base_image;
+	price_in.pet_ai = 0;
+	price_in.player_charm = p->charm;
+	price_in.nomal_rate = 1.0;
+	price_in.special_rate = 1.2;
+	price_in.is_special_pet = false;
+	const std::int32_t unit_price = std::max(1, SA::Rules::computePetSellPrice(price_in));
 
 	// 门: 随身石币上限检查 (DR-EC3 拒绝, 零改动)
 	const std::int32_t cap = maxHaveGold(0);
@@ -2435,10 +2433,22 @@ bool World::sellPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	}
 
 	// 执行出售原子操作: 扣除并释放宠物 + 增加石币 (走 GoldLedger, 源 kPetShopSell)
+	// ★ #47：原版 NPC_PetDel（npc_petshop.c:858-882）特殊规则：
+	//   ①骑乘中拒绝（原版直接 return，不自动下骑）
 	if (playerRidePetSlot(id) == pet_slot)
 	{
-		dismountPet(id);
+		std::string ride_msg = "骑乘中的宠物无法贩卖喔！";
+		s.sendExChangeWindow(id, npc->id, ride_msg,
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return false;
 	}
+	//   ②出售默认宠时重置 default_pet（原版 CHAR_DEFAULTPET=-1 + KS）
+	if (p->default_pet == pet_slot)
+	{
+		p->default_pet = -1;
+	}
+	//   ③守护兽（CHAR_PETFAMILY==1）拒绝：Pet 暂无 pet_family 字段，待补
+	//   ④战斗中拒绝：Player 暂无 battle_mode 字段，待补
 	p->clearPetSlot(pet_slot);
 	s.pets.release(h);
 
@@ -2489,15 +2499,8 @@ bool World::learnPetSkill(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	if (target_prod == nullptr)
 		return false;
 
-	// 门 ①: 宠物等级是否达标 (移植 npc_petskillshop.c 门槛)
-	if (pet->level < target_prod->level)
-	{
-		std::string low_msg = npc->level_low_msg.empty() ? "宠物等级不足以学习此技能！" : npc->level_low_msg;
-		s.sendExChangeWindow(id, npc->id, low_msg,
-		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
-		return false;
-	}
-
+	// ★ #49：去掉自加的宠物等级门。8.0 常规版 npc_petskillshop.c 教学流程无任何宠物等级前置
+	//   （等级门是特殊版 npc_freepetskillshop.c 的 PETSKILL_FREE 概念，常规版从来没有）。
 	// 门 ②: 是否已习得该技能 (不可重复学同一技能)
 	for (std::size_t i = 0; i < SA::Model::Pet::kPetSkillSlots; ++i)
 	{

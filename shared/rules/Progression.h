@@ -400,6 +400,36 @@ StatAllocationResult applyStatAllocation(std::int32_t vital, std::int32_t str,
                                          std::int32_t points_to_allocate = 1,
                                          ProfessionClass profession = ProfessionClass::kNone) noexcept;
 
+// ── 宠物店卖宠价格 ───────────────────────────────────────────────
+// 1:1 移植 NPC_GetCost (gmsv/npc/npc_petshop.c:706-830)。
+//
+// 原版公式：
+//   levelcost = level² × 10
+//   getlevel  = getlevel² × 10（getlevel==0 时按 1；转生宠 transmigration>0 时按 10，
+//               Syu 修"卖转生宠金钱变负"bug）
+//   rare      = {0→1, 1→5, 2→8}（其他值保持原值）
+//   cost      = ((levelcost − getlevel) + (level × 10)) × rare
+//   rate      = nomal_rate/1000（默认 1.0）；图号命中 special_pet 时用 special_rate/1000（默认 1.2）
+//   charm修正 = (玩家魅力 + 宠物AI)；<20 按 20；再 /2；cost ×= charm修正/100
+//
+// ⚠️ Pet 结构暂无 transmigration/rare/WORKFIXAI 字段，调用方传 0（= 无转生/普通/无AI加成）。
+struct PetSellPriceInput
+{
+	std::int32_t level = 0;          // 宠物等级
+	std::int32_t getlevel = 0;       // 捕获等级 (CHAR_PETGETLV)
+	std::int32_t transmigration = 0; // 转生次数
+	std::int32_t rare = 0;           // 稀有度
+	std::int32_t base_image = 0;     // 图号 (CHAR_BASEBASEIMAGENUMBER)
+	std::int32_t pet_ai = 0;         // 宠物AI (CHAR_WORKFIXAI)
+	std::int32_t player_charm = 0;   // 玩家魅力 (CHAR_WORKFIXCHARM)
+	double nomal_rate = 1.0;         // 普通倍率 (NPC 的 NOMALRATE/1000)
+	double special_rate = 1.2;       // 特殊倍率 (NPC 的 SPECIALRATE/1000)
+	bool is_special_pet = false;     // 图号是否命中 special_pet
+};
+
+// 计算宠物店卖宠价格。纯函数，无随机。
+std::int32_t computePetSellPrice(const PetSellPriceInput &in) noexcept;
+
 } // namespace SA::Rules
 
 #endif // __SA_Progression_H__

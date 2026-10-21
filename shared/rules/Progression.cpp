@@ -547,4 +547,56 @@ StatAllocationResult applyStatAllocation(std::int32_t vital, std::int32_t str,
 	return res;
 }
 
+// ── 宠物店卖宠价格 ───────────────────────────────────────────────
+// 1:1 移植 NPC_GetCost (gmsv/npc/npc_petshop.c:706-830)。
+std::int32_t computePetSellPrice(const PetSellPriceInput &in) noexcept
+{
+	// levelcost = level² × 10
+	const std::int32_t levelcost = in.level * in.level * 10;
+
+	// getlevel = getlevel² × 10；==0 时按 1；转生宠按 10（Syu bugfix）
+	std::int32_t getlevel = in.getlevel * in.getlevel * 10;
+	if (in.getlevel == 0)
+	{
+		getlevel = 1;
+	}
+	if (in.transmigration > 0)
+	{
+		getlevel = 10;
+	}
+
+	// rare 映射：0→1, 1→5, 2→8
+	std::int32_t rare = in.rare;
+	if (rare == 0)
+	{
+		rare = 1;
+	}
+	else if (rare == 1)
+	{
+		rare = 5;
+	}
+	else if (rare == 2)
+	{
+		rare = 8;
+	}
+
+	// cost = ((levelcost − getlevel) + (level × 10)) × rare
+	std::int32_t cost = ((levelcost - getlevel) + (in.level * 10)) * rare;
+
+	// rate：普通 or 特殊
+	const double rate = in.is_special_pet ? in.special_rate : in.nomal_rate;
+	cost = static_cast<std::int32_t>(cost * rate);
+
+	// 魅力修正：(玩家魅力 + 宠物AI)；<20 按 20；/2；cost ×= charm/100
+	std::int32_t charm = in.player_charm + in.pet_ai;
+	if (charm < 20)
+	{
+		charm = 20;
+	}
+	charm = charm / 2;
+	cost = static_cast<std::int32_t>(cost * (static_cast<double>(charm) / 100.0));
+
+	return cost;
+}
+
 } // namespace SA::Rules

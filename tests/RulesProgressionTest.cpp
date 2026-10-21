@@ -875,3 +875,54 @@ TEST_CASE("耐久度:显示用百分比")
 	// 小数值防除零：500/800 → (0, 0→1) → 0%
 	CHECK(computeDurabilityDisplayPercent(500, 800) == 0);
 }
+
+TEST_CASE("宠物店卖宠价格:原版 NPC_GetCost 公式")
+{
+	// 基础：level=10, getlevel=1, rare=0→1, charm=(60+0)/2=30
+	// levelcost=10²×10=1000, getlevel=1²×10=10
+	// cost=((1000-10)+(10×10))×1=1090
+	// rate=1.0 → 1090; charm=30 → 1090×0.3=327
+	PetSellPriceInput in;
+	in.level = 10;
+	in.getlevel = 1;
+	in.rare = 0;
+	in.player_charm = 60;
+	in.pet_ai = 0;
+	CHECK(computePetSellPrice(in) == 327);
+
+	// rare=1 → ×5：1090×5=5450 ×0.3=1635
+	in.rare = 1;
+	CHECK(computePetSellPrice(in) == 1635);
+
+	// rare=2 → ×8：1090×8=8720 ×0.3=2616
+	in.rare = 2;
+	CHECK(computePetSellPrice(in) == 2616);
+
+	// 转生宠：getlevel 按 10 算
+	// getlevel=10, cost=((1000-10)+100)×1=1090（同上，因为 getlevel=1²×10=10）
+	// 换个 getlevel 验证：getlevel=5 → 5²×10=250；转生按 10
+	in.rare = 0;
+	in.getlevel = 5;
+	in.transmigration = 1;
+	// getlevel=10, cost=((1000-10)+100)×1=1090 ×0.3=327
+	CHECK(computePetSellPrice(in) == 327);
+
+	// getlevel=0 按 1 算：0²×10=0 → 按 1
+	in.getlevel = 0;
+	in.transmigration = 0;
+	// getlevel=1, cost=((1000-1)+100)×1=1099 ×0.3=329（1099×0.3=329.7→329）
+	CHECK(computePetSellPrice(in) == 329);
+
+	// 魅力下限：charm<20 按 20 → /2=10 → ×0.1
+	in.getlevel = 1;
+	in.player_charm = 10;
+	in.pet_ai = 0;
+	// charm=10<20→20/2=10, cost=1090×0.1=109
+	CHECK(computePetSellPrice(in) == 109);
+
+	// 特殊宠 rate：1.2
+	in.player_charm = 60;
+	in.is_special_pet = true;
+	// cost=1090×1.2=1308 ×0.3=392（1308×0.3=392.4→392）
+	CHECK(computePetSellPrice(in) == 392);
+}

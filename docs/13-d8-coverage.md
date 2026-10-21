@@ -129,7 +129,7 @@
 | 68 | NPC:FMPKCallMan | NPC(消费 DSL) | 386 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
 | 69 | NPC:FMPKMan | NPC(消费 DSL) | 302 | 长尾 | ⬜ | — | 同上 |
 | 70 | NPC:FMWarpMan | NPC(消费 DSL) | 1194 | 长尾 | ⬜ | — | 同上 |
-| 71 | NPC:freepetskillshop | NPC(消费 DSL) | 565 | 长尾 | ✅ | `§9.0.78`(W.13:PetSkillShop 学宠技七槽与扣费 `delGold(kPetSkillFee)`;`world_map` 用例) | — |
+| 71 | NPC:freepetskillshop | NPC(消费 DSL) | 565 | 长尾 | ⬜ | 特殊版未移植（2026-10-22 第6轮核对：W.13 实际移植的是常规版 `npc_petskillshop.c`，特殊版 `npc_freepetskillshop.c` 的 FREE/种类/道具/WARP 机制均无） | — |
 | 72 | NPC:NPC_GambleBank | NPC(消费 DSL) | 482 | 长尾 | ⬜ | — | 同上(赌博产钱点,`16` §12.4 W6) |
 | 73 | NPC:NPC_GambleMaster | NPC(消费 DSL) | 593 | 长尾 | ⬜ | — | 同上 |
 | 74 | NPC:ItemShop | NPC(消费 DSL) | 1089 | 核心 | ✅ | `§9.0.77`(W.12:NPC 道具商店 ShopMan 买卖交易与 GoldLedger 扣加金闭环;`world_map` 用例) | 特殊商店折扣/积分机制 |
