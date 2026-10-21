@@ -3016,6 +3016,8 @@ inline const char *goldReasonName(GoldReason r) noexcept
 		return "pet_shop_buy";
 	case GoldReason::kPetShopSell:
 		return "pet_shop_sell";
+	case GoldReason::kPetShopDeposit:
+		return "pet_shop_deposit";
 	case GoldReason::kPetSkillFee:
 		return "pet_skill_fee";
 	case GoldReason::kWarpFee:
