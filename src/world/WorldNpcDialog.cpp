@@ -2279,8 +2279,9 @@ bool World::sellItemToShop(SA::Net::SessionId id, std::uint64_t npc_id, int slot
 	const std::int32_t total_price = unit_price * std::max(1, item->current_pile);
 
 	// 门: 随身石币上限检查 (DR-EC3 拒绝, 零改动)
+	// ★ 原版 NPC_SellNewItem (npc_itemshop.c:1290) 用 >=：gold+price 恰等于上限时拒绝
 	const std::int32_t cap = maxHaveGold(0);
-	if (static_cast<std::int64_t>(p->gold) + total_price > cap)
+	if (static_cast<std::int64_t>(p->gold) + total_price >= cap)
 	{
 		std::string full_msg = npc->stone_full_msg.empty() ? "钱包装不下这么多石币！" : npc->stone_full_msg;
 		s.sendExChangeWindow(id, npc->id, full_msg,
