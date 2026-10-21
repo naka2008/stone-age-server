@@ -2185,11 +2185,12 @@ static bool resolveOrdered(BattleField field,
 
 			// ── P2 第二批: 状态变化道具 (ITEM_useStatusChange, item_event.c:1202) ──
 			// 原版：ITEM_useStatusChange_Battle 给目标施加指定状态
-			if (status_change > 0)
+			if (status_change > 0 && status_change <= 255)
 			{
-				field.at(use_target).status = status_change;
+				const auto status_u8 = static_cast<std::uint8_t>(status_change);
+				field.at(use_target).status = status_u8;
 				field.at(use_target).status_turns = 3; // 默认 3 回合
-				status[use_target] = status_change;
+				status[use_target] = status_u8;
 				status_turns[use_target] = 3;
 				auto *sc = sink.push(SA::Domain::BattleEvent::BodyKind::STATUS_CHANGE);
 				if (sc != nullptr)
