@@ -173,6 +173,10 @@ struct Pet
 	std::int32_t mod_ai = 0;
 	std::int32_t variable_ai = 0;
 
+	// ── 家族守护兽标记 (原 CHAR_PETFAMILY, 1=守护兽不可交易/丢弃) ──
+	// ★ #47：卖宠时守护兽拒绝出售（原 NPC_PetDel, npc_petshop.c:851-858）。
+	std::int32_t pet_family = 0;
+
 	// ── 宠技槽(源码 :371-373;原始 8.5 树 `pet.c:375-377`,批次 B2a)──────────────
 	//
 	// ★★ 捕获时从敌人 L2 实体**整组拷 7 槽**:

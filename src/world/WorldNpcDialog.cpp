@@ -1284,7 +1284,9 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 				}
 				else if (npc.type == NpcType::kPetShop)
 				{
-					// 宠物商店 NPC 交互 (批次 W.13, 移植 npc_petshop.c)
+					// 宠物商店 NPC 交互 (批次 W.13)。
+					// ★ #51：卖宠部分移植 npc_petshop.c；"买宠"为自主设计（原版无此功能），
+					//   非原版移植。
 					SA::Domain::WindowOpen win{};
 					win.window_id = ++s.next_window_id;
 					win.kind = SA::Domain::WindowKind::WINDOW_KIND_ITEM_SHOP;
@@ -2447,8 +2449,16 @@ bool World::sellPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 	}
 
 	// 执行出售原子操作: 扣除并释放宠物 + 增加石币 (走 GoldLedger, 源 kPetShopSell)
-	// ★ #47：原版 NPC_PetDel（npc_petshop.c:858-882）特殊规则：
-	//   ①骑乘中拒绝（原版直接 return，不自动下骑）
+	// ★ #47：原版 NPC_PetDel（npc_petshop.c:851-882）特殊规则：
+	//   ①守护兽拒绝（原 CHAR_PETFAMILY==1）
+	if (pet->pet_family == 1)
+	{
+		std::string guard_msg = "很抱歉～守护兽无法贩卖喔！\n请自己好好照顾！";
+		s.sendExChangeWindow(id, npc->id, guard_msg,
+		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+		return false;
+	}
+	//   ②骑乘中拒绝（原版直接 return，不自动下骑）
 	if (playerRidePetSlot(id) == pet_slot)
 	{
 		std::string ride_msg = "骑乘中的宠物无法贩卖喔！";
@@ -2456,11 +2466,13 @@ bool World::sellPetToShop(SA::Net::SessionId id, std::uint64_t npc_id, int pet_s
 		                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 		return false;
 	}
-	//   ②出售默认宠时重置 default_pet（原版 CHAR_DEFAULTPET=-1 + KS）
+	//   ③出售默认宠时重置 default_pet（原版 CHAR_DEFAULTPET=-1 + KS）
 	if (p->default_pet == pet_slot)
 	{
 		p->default_pet = -1;
 	}
+	//   ④战斗中拒绝：Player 暂无 battle_mode 字段。注：战斗中玩家无法与 NPC 交互
+	//      （NPC 交互要求非战斗状态），此门在当前架构下不可达，记为已知缺口。
 	//   ③守护兽（CHAR_PETFAMILY==1）拒绝：Pet 暂无 pet_family 字段，待补
 	//   ④战斗中拒绝：Player 暂无 battle_mode 字段，待补
 	p->clearPetSlot(pet_slot);
