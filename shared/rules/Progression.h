@@ -217,6 +217,23 @@ struct EquipModifiers
 	std::int32_t modify_mp = 0;
 };
 
+// 单件穿戴装备的修正值输入（原 ITEM_MODIFYATTACK/DEFENCE/QUICK/HP/MP, item.h:143-147）。
+// 与 EquipModifiers 同构，区分"输入（单件）/输出（累加）"语义，避免 shared/rules 依赖 model/Item.h。
+struct EquippedItemMods
+{
+	std::int32_t modify_attack = 0;
+	std::int32_t modify_defense = 0;
+	std::int32_t modify_quick = 0;
+	std::int32_t modify_hp = 0;
+	std::int32_t modify_mp = 0;
+};
+
+// 从穿戴装备累加属性修正（原 ITEM_equipEffect 的累加段, item.c:1729-1790）。
+// 纯累加，不钳制——钳制在 deriveEquippedStats 应用时做（原版亦然：累加段无钳制，
+// 应用段对 FIXSTR/TOUGH/DEX 做 max(0)/max(-100)）。
+// items: 9 个装备槽的修正值数组（含空槽的零值项）；count: 槽位数。
+EquipModifiers computeEquipModifiers(const EquippedItemMods *items, std::size_t count) noexcept;
+
 // 叠加上装备加成后的最终战斗数值。
 // 1:1 移植 CHAR_complianceParameter (char/char.c:3525-3547)。
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,

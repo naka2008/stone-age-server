@@ -280,6 +280,22 @@ PetLevelUpStats rollPetLevelUp(std::uint8_t growth_vital, std::uint8_t growth_st
 
 // ══ 装备属性修正 (批次 P.1)═══════════════════════════════════════════
 
+EquipModifiers computeEquipModifiers(const EquippedItemMods *items, std::size_t count) noexcept
+{
+	EquipModifiers mods{};
+	if (items == nullptr)
+		return mods;
+	for (std::size_t i = 0; i < count; ++i)
+	{
+		mods.modify_attack += items[i].modify_attack;
+		mods.modify_defense += items[i].modify_defense;
+		mods.modify_quick += items[i].modify_quick;
+		mods.modify_hp += items[i].modify_hp;
+		mods.modify_mp += items[i].modify_mp;
+	}
+	return mods;
+}
+
 DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,
                                  std::int32_t tough, std::int32_t dex,
                                  const EquipModifiers &equip) noexcept

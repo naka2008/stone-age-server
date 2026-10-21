@@ -1853,25 +1853,26 @@ bool World::unequipItem(SA::Net::SessionId session, int equip_slot, int target_i
 
 SA::Rules::EquipModifiers World::playerEquipModifiers(SA::Net::SessionId session) const
 {
-	SA::Rules::EquipModifiers mods{};
 	const SA::Model::Player *p =
 	    _impl->players.resolve(_impl->player_of_session.find(session));
 	if (p == nullptr)
-		return mods;
+		return {};
 
+	// ★ E.1: 累加逻辑提为纯函数 computeEquipModifiers（原 ITEM_equipEffect 累加段）。
+	SA::Rules::EquippedItemMods slot_mods[SA::Model::kStartItemArray]{};
 	for (std::size_t i = 0; i < SA::Model::kStartItemArray; ++i)
 	{
 		const SA::Model::Item *it = _impl->items.resolve(p->items[i]);
 		if (it != nullptr)
 		{
-			mods.modify_attack += it->modify_attack;
-			mods.modify_defense += it->modify_defense;
-			mods.modify_quick += it->modify_quick;
-			mods.modify_hp += it->modify_hp;
-			mods.modify_mp += it->modify_mp;
+			slot_mods[i].modify_attack = it->modify_attack;
+			slot_mods[i].modify_defense = it->modify_defense;
+			slot_mods[i].modify_quick = it->modify_quick;
+			slot_mods[i].modify_hp = it->modify_hp;
+			slot_mods[i].modify_mp = it->modify_mp;
 		}
 	}
-	return mods;
+	return SA::Rules::computeEquipModifiers(slot_mods, SA::Model::kStartItemArray);
 }
 
 // ── 遇敌:坐标 → 区域 → 编组(批次 M.6)──────────────────────────────────

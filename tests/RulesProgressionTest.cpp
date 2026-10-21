@@ -488,6 +488,47 @@ TEST_CASE("装备加成:叠加与下限保底")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  11b. 装备累加纯函数 (ITEM_equipEffect 累加段, item.c:1729-1790; 批次 E.1)
+// ═══════════════════════════════════════════════════════════════════════════
+TEST_CASE("装备累加:多件求和与空槽零值")
+{
+	// 9 槽：槽0 武器(+50攻)、槽1 防具(+30防)、槽2 负敏捷(-100)、其余空
+	EquippedItemMods slots[9]{};
+	slots[0].modify_attack = 50;
+	slots[1].modify_defense = 30;
+	slots[2].modify_quick = -100;
+	slots[3].modify_hp = 200;
+	slots[4].modify_mp = 100;
+
+	const auto mods = computeEquipModifiers(slots, 9);
+	CHECK(mods.modify_attack == 50);
+	CHECK(mods.modify_defense == 30);
+	CHECK(mods.modify_quick == -100);
+	CHECK(mods.modify_hp == 200);
+	CHECK(mods.modify_mp == 100);
+}
+
+TEST_CASE("装备累加:空指针与零槽返回零值")
+{
+	const auto mods = computeEquipModifiers(nullptr, 0);
+	CHECK(mods.modify_attack == 0);
+	CHECK(mods.modify_defense == 0);
+	CHECK(mods.modify_quick == 0);
+	CHECK(mods.modify_hp == 0);
+	CHECK(mods.modify_mp == 0);
+}
+
+TEST_CASE("装备累加:纯累加不钳制（钳制在 deriveEquippedStats）")
+{
+	// 原版累加段无钳制：-500 敏捷照单全收，钳制由应用段做
+	EquippedItemMods slots[9]{};
+	slots[0].modify_quick = -500;
+
+	const auto mods = computeEquipModifiers(slots, 9);
+	CHECK(mods.modify_quick == -500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  12. 装备槽位映射 (ITEM_getEquipPlace, item.c:1360-1420)
 // ═══════════════════════════════════════════════════════════════════════════
 TEST_CASE("装备槽位:道具分类至装备部位映射正确")
