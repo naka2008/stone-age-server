@@ -1119,6 +1119,16 @@ struct ItemEffect
 	std::int32_t warp_floor = 0; // 传送目的地
 	std::int32_t warp_x = 0;
 	std::int32_t warp_y = 0;
+	// ── P2 第二批: 场景内特殊效果 ──
+	bool noenemy = false;           // 防遇敌 (ITEM_useNoenemy, item_event.c:2128)
+	bool force_encounter = false;   // 强制遇敌 (ITEM_useEncounter, item_event.c:2483)
+	std::int32_t capture_bonus = 0; // 捕获率提升 (ITEM_useCaptureUp, item_event.c:1294)
+	bool mic_toggle = false;        // 麦克风开关 (ITEM_useMic, item_event.c:1280)
+	// ── P2 第二批: 战斗内特殊效果 ──
+	bool att_reverse = false;       // 属性反转 (ITEM_useAttReverse, item_event.c:1267)
+	std::int32_t status_change = 0; // 施加状态ID (ITEM_useStatusChange, item_event.c:1202)
+	// ── P2 第二批: 其他 ──
+	bool skill_up = false; // 技能点+1 (ITEM_useSkup, item_event.c:2113)
 };
 
 // 魔法与精灵术效果表的一行 (阶段 5.1)

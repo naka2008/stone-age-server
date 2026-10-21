@@ -2073,8 +2073,12 @@ static bool resolveOrdered(BattleField field,
 			const std::int32_t power = actor.mods.item_heal_power;
 			const std::int32_t mp_power = actor.mods.item_mp_power;
 			const SpellKind item_sp_kind = actor.mods.item_spell_kind;
+			// ── P2 第二批: 战斗道具特殊效果 ──
+			const bool att_reverse = actor.mods.item_att_reverse;
+			const int status_change = actor.mods.item_status_change;
 
-			if (power <= 0 && mp_power <= 0 && item_sp_kind == SpellKind::kNone)
+			if (power <= 0 && mp_power <= 0 && item_sp_kind == SpellKind::kNone &&
+			    !att_reverse && status_change <= 0)
 				continue;
 
 			int use_target = static_cast<int>(cmd.command.use_item.target);
@@ -2164,6 +2168,36 @@ static bool resolveOrdered(BattleField field,
 					{
 						rev->body.reverse.actor = static_cast<std::uint32_t>(use_target);
 					}
+				}
+			}
+
+			// ── P2 第二批: 属性反转道具 (ITEM_useAttReverse, item_event.c:1267) ──
+			// 原版：ITEM_useAttReverse_Battle 反转目标属性（与 kElementReverse 同效果）
+			if (att_reverse)
+			{
+				applyElementReverse(field.at(use_target));
+				auto *rev = sink.push(SA::Domain::BattleEvent::BodyKind::REVERSE);
+				if (rev != nullptr)
+				{
+					rev->body.reverse.actor = static_cast<std::uint32_t>(use_target);
+				}
+			}
+
+			// ── P2 第二批: 状态变化道具 (ITEM_useStatusChange, item_event.c:1202) ──
+			// 原版：ITEM_useStatusChange_Battle 给目标施加指定状态
+			if (status_change > 0)
+			{
+				field.at(use_target).status = status_change;
+				field.at(use_target).status_turns = 3; // 默认 3 回合
+				status[use_target] = status_change;
+				status_turns[use_target] = 3;
+				auto *sc = sink.push(SA::Domain::BattleEvent::BodyKind::STATUS_CHANGE);
+				if (sc != nullptr)
+				{
+					sc->body.status_change.target = static_cast<std::uint32_t>(use_target);
+					sc->body.status_change.status =
+					    static_cast<SA::Domain::BattleStatus>(status_change);
+					sc->body.status_change.applied = true;
 				}
 			}
 

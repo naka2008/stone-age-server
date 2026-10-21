@@ -403,6 +403,10 @@ struct CombatModifiers
 	int item_spell_power = 0;
 	int item_spell_magic_level = 1;
 	int item_cost_mp = 0;
+	// ── P2 第二批: 战斗道具特殊效果 ──
+	int item_capture_bonus = 0;    // 捕获率加成 (ITEM_useCaptureUp, item_event.c:1294)
+	bool item_att_reverse = false; // 属性反转 (ITEM_useAttReverse, item_event.c:1267)
+	int item_status_change = 0;    // 施加状态ID (ITEM_useStatusChange, item_event.c:1202)
 };
 
 // ── 一个战斗单位 ──────────────────────────────────────────────

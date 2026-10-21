@@ -108,6 +108,14 @@ struct Player
 	// ★ 落马(被特定技能击中)时清 -1(battle.c:7835-7836,7873-7874)。
 	std::int32_t ride_pet = -1;
 
+	// 防遇敌到期时间戳 (原 `setNoenemy(fd)`, item_event.c:2128 ITEM_useNoenemy)。
+	// 0 = 无防遇敌效果；>0 = 该 Unix 时间戳之前不触发随机遇敌。
+	std::int64_t noenemy_until = 0;
+
+	// 麦克风模式 (原 `WORKFLG_MICMODE`, item_event.c:637 ITEM_useMic_Field)。
+	// true = 发言广播给全服（原版麦克风道具开关）。
+	bool mic_mode = false;
+
 	// 累计捕获数(原 `CHAR_GETPETCOUNT`,源码 `battle_event.c:3543`)。
 	std::int32_t capture_count = 0;
 

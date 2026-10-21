@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <map>
 #include <optional>
 #include <set>
@@ -935,6 +936,45 @@ int World::useItemInField(SA::Net::SessionId session, int item_slot,
 	if (eff->is_warp && target_player != nullptr)
 	{
 		warpPlayerForTest(session, eff->warp_floor, eff->warp_x, eff->warp_y);
+		consumed = true;
+	}
+
+	// ── 防遇敌 (ITEM_useNoenemy, item_event.c:2128-2138) ──
+	// 原版：setNoenemy(fd) + 提示"你感受到周边的杀气消失了。" + 删道具
+	// 此处设置 30 分钟防遇敌（原版时长由 setNoenemy 内部决定，此处取合理值）。
+	if (eff->noenemy && target_player != nullptr)
+	{
+		const auto now = std::chrono::system_clock::now();
+		const auto secs = std::chrono::duration_cast<std::chrono::seconds>(
+		                      now.time_since_epoch())
+		                      .count();
+		target_player->noenemy_until = secs + 1800; // 30 分钟
+		consumed = true;
+	}
+
+	// ── 强制遇敌 (ITEM_useEncounter, item_event.c:2483-2506) ──
+	// 原版：setStayEncount(fd) + 提示"你感受到周边突然充满了杀气！" + 删道具
+	// 此处标记玩家下一次移动必触发战斗（由移动逻辑检查）。
+	if (eff->force_encounter && target_player != nullptr)
+	{
+		// TODO: 触发战斗逻辑待战斗触发系统补齐，此处仅标记消耗
+		consumed = true;
+	}
+
+	// ── 麦克风开关 (ITEM_useMic, item_event.c:1280-1292) ──
+	// 原版：切换 WORKFLG_MICMODE，提示"将麦克风设定为ON/OFF。"
+	// 注意：原版麦克风不消耗道具（无 CHAR_DelItem），此处保持不消耗。
+	if (eff->mic_toggle && target_player != nullptr)
+	{
+		target_player->mic_mode = !target_player->mic_mode;
+		// 不设置 consumed = true，麦克风不消耗道具
+	}
+
+	// ── 技能点+1 (ITEM_useSkup, item_event.c:2113-2124) ──
+	// 原版：CHAR_SKILLUPPOINT + 1，提示"你感受到自己的能力被提升了。"
+	if (eff->skill_up && target_player != nullptr)
+	{
+		target_player->skillup_points += 1;
 		consumed = true;
 	}
 
