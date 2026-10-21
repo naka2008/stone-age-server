@@ -5,6 +5,7 @@
 #include <iterator>
 #include <set>
 #include <stdexcept>
+#include <unordered_map>
 
 namespace SA::SessionStorage
 {
