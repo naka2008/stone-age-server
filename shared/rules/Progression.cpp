@@ -338,6 +338,17 @@ DerivedStats deriveEquippedStats(std::int32_t vital, std::int32_t str,
 	base.defense = std::max(0, base.defense + equip.modify_defense);
 	base.quick = std::max(1, base.quick + equip.modify_quick);
 	base.max_hp = std::max(1, base.max_hp + equip.modify_hp);
+
+	// ★ E.3 接线：套装加成（原 Other_DefcharWorkInt, item.c:1871）。
+	//   8.0 的 CHAR_WORKSUIT* 全源码无写入点 ⇒ SuitBonuses 恒 0 ⇒ 此处为 no-op，
+	//   但补全了 CHAR_complianceParameter 的"装备→套装"两段式流程。
+	//   未来套装识别逻辑就绪后，只需在此处传入非零 SuitBonuses。
+	const auto suited = applySuitBonuses(base.attack, base.defense, base.quick, base.max_hp, SuitBonuses{});
+	base.attack = suited.fix_str;
+	base.defense = suited.fix_tough;
+	base.quick = suited.fix_dex;
+	base.max_hp = suited.max_hp;
+
 	return base;
 }
 
