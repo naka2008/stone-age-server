@@ -1157,7 +1157,7 @@ void World::openRenameInputWindow(SA::Net::SessionId session, int rename_item_sl
 // (原版 ITEM_usePetSkillCanned_WindowResult, item_event.c:1327-1375)。
 void World::applyPetSkillCanned(SA::Net::SessionId session, int canned_slot,
                                 SA::Model::EntityHandle pet_handle,
-                                std::int32_t skill_id, int skill_slot)
+                                [[maybe_unused]] std::int32_t skill_id, int skill_slot)
 {
 	Impl &s = *_impl;
 	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(session));
