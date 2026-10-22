@@ -1998,6 +1998,42 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 					//   职业技能
 					ok = handleWelfareTalk(id, npc.id);
 				}
+				else if (npc.type == NpcType::kMsg)
+				{
+					// 消息 (P5-5, 原版 npc_msg.c)
+					//   显示配置文案
+					ok = handleMsgTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kMic)
+				{
+					// 麦克风 (P5-5, 原版 npc_mic.c)
+					//   同楼层广播
+					ok = handleMicTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kAction)
+				{
+					// 动作 (P5-5, 原版 npc_action.c)
+					//   表情反应 (基础版: 对话; 观察钩子待接)
+					ok = handleActionTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kItemChange)
+				{
+					// 物品交换 (P5-5, 原版 npc_itemchange.c)
+					//   多步窗口交换 (基础版)
+					ok = handleItemChangeTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kDengon)
+				{
+					// 留言板 (P5-5, 原版 npc_dengon.c)
+					//   读写留言 (内存版)
+					ok = handleDengonTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kSysinfo)
+				{
+					// 系统信息 (P5-5, 原版 npc_sysinfo.c)
+					//   GM 指令台 (基础版)
+					ok = handleSysinfoTalk(id, npc.id);
+				}
 			}
 		}
 	}
@@ -4197,6 +4233,195 @@ bool World::handleWelfareTalk(SA::Net::SessionId id, std::uint64_t npc_id)
 	                  "可以学习职业技能。\\n"
 	                  "\\n"
 	                  "※ 职业技能开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5-5: 消息 (原版 npc_msg.c, 47 行) ──────────────────────────────────────
+//   原版: NPC_MsgLooked 显示 argstr; NPC_MsgInit 设为城镇居民。
+//   这里: 对话时显示 NPC 配置的 message 文案 (对应原版 argstr)。
+bool World::handleMsgTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kMsg)
+		return false;
+
+	const std::string &msg = npc->message.empty() ? npc->name : npc->message;
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5-5: 麦克风 (原版 npc_mic.c, 160 行) ───────────────────────────────────
+//   原版: NPC_MicTalked 把玩家说的话广播给同楼层 (或矩形范围内) 所有玩家;
+//         族长可走 saac 广播全服 (ACFMAnnounce)。
+//   这里: 对话时开 LINE_INPUT 收广播内容, 确认后推送给同 floor 在线玩家。
+//   TODO: 族长全服广播 (需 saac 通道); 矩形范围模式 (CHAR_WORK_MODE)。
+bool World::handleMicTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kMic)
+		return false;
+
+	const std::string speaker(p->name.data, p->name.len);
+	const std::int32_t floor = p->floor;
+	sendInputWindow(
+	    id, npc_id, "请输入要广播的内容:", 120,
+	    [this, speaker, floor](SA::Net::SessionId sid, const SA::Domain::WindowReply &reply) -> bool
+	    {
+		    Impl &s2 = *_impl;
+		    if (reply.button != static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK))
+			    return true; // 取消 → 关闭
+		    std::string text;
+		    if (reply.result_kind == SA::Domain::WindowReply::ResultKind::TEXT)
+			    text.assign(reply.result.text.data, reply.result.text.len);
+		    if (text.empty())
+			    return true;
+		    // 原版: "[族长广播]" 前缀走 saac; 普通广播推送同楼层
+		    ChatMessage chat{};
+		    chat.channel = ChatChannel::kTalkShout;
+		    chat.sender_name = speaker;
+		    chat.text = "[广播]" + text;
+		    for (const auto &kv : s2.conns)
+		    {
+			    const SA::Net::SessionId osid = kv.first;
+			    const SA::Model::Player *op = s2.players.resolve(s2.player_of_session.find(osid));
+			    if (op != nullptr && op->floor == floor)
+				    s2.incoming_chats[osid].push_back(chat);
+		    }
+		    return true; // 已消费 → 关闭窗口
+	    });
+	return true;
+}
+
+// ── P5-5: 动作 (原版 npc_action.c, 138 行) ───────────────────────────────────
+//   原版: NPC_ActionTalked 显示 "normal" 配置文案;
+//         NPC_ActionWatch 监听玩家表情 (attack/damage/down/sit/hand/pleasure/
+//         angry/sad/guard/nod/throw) 并回复对应配置文案。
+//   这里: 对话部分; 表情观察钩子待现代服务端事件系统支持 (TODO)。
+bool World::handleActionTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kAction)
+		return false;
+
+	// 原版从 argstr 取 "normal" 键; 这里用 NPC 配置的 message, 为空则用 name。
+	const std::string &msg = npc->message.empty() ? npc->name : npc->message;
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5-5: 物品交换 (原版 npc_itemchange.c, 253 行) ───────────────────────────
+//   原版: START_MSG(YESNO) → SELECT(菜单) → MESSAGE(需求确认, YESNO) → END(执行交换)。
+//   这里基础版: 显示交换说明窗口; 完整多步菜单流待配置解析 (TODO)。
+bool World::handleItemChangeTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kItemChange)
+		return false;
+
+	std::string msg = "这里是物品交换所。\\n"
+	                  "\\n"
+	                  "可以把不需要的物品交换成需要的物品。\\n"
+	                  "\\n"
+	                  "※ 交换菜单开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5-5: 留言板 (原版 npc_dengon.c, 249 行) ─────────────────────────────────
+//   原版: 每 NPC 一个文件存留言; Looked/WINDOWTYPE_DENGON 分页显示,
+//         OK 写新留言, NEXT/PREV 翻页。
+//   这里内存版: 每 npc_id 一个 vector<string>; 对话时显示最新留言并可追帖。
+bool World::handleDengonTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kDengon)
+		return false;
+
+	auto &board = s.dengon_boards[npc_id]; // 不存在则创建空板
+	std::string prompt = "留言板";
+	if (!board.empty())
+	{
+		prompt += "\\n\\n最新留言:\\n";
+		const std::size_t show = std::min<std::size_t>(board.size(), 3);
+		for (std::size_t i = board.size() - show; i < board.size(); ++i)
+			prompt += board[i] + "\\n";
+	}
+	prompt += "\\n请输入你的留言:";
+	const std::string speaker(p->name.data, p->name.len);
+	sendInputWindow(
+	    id, npc_id, prompt, 120,
+	    [this, npc_id, speaker](SA::Net::SessionId sid, const SA::Domain::WindowReply &reply) -> bool
+	    {
+		    Impl &s2 = *_impl;
+		    if (reply.button != static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK))
+			    return true;
+		    std::string text;
+		    if (reply.result_kind == SA::Domain::WindowReply::ResultKind::TEXT)
+			    text.assign(reply.result.text.data, reply.result.text.len);
+		    if (text.empty())
+			    return true;
+		    // 原版 NPC_DengonWriteString 写文件; 这里追加到内存板
+		    s2.dengon_boards[npc_id].push_back("[" + speaker + "] " + text);
+		    return true;
+	    });
+	return true;
+}
+
+// ── P5-5: 系统信息 (原版 npc_sysinfo.c, 841 行) ───────────────────────────────
+//   原版: 口令进入指令模式 (help/player/list/send/enemystate 等 GM 指令)。
+//   这里基础版: 显示说明; 完整 GM 指令表待 GM 权限系统 (TODO)。
+bool World::handleSysinfoTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kSysinfo)
+		return false;
+
+	std::string msg = "这里是系统信息。\\n"
+	                  "\\n"
+	                  "可以查询服务器状态。\\n"
+	                  "\\n"
+	                  "※ GM 指令模式开发中, 敬请期待。";
 	s.sendExChangeWindow(id, npc->id, msg,
 	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 	return true;

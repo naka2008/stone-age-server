@@ -310,6 +310,18 @@ void configureContent(SA::World::World &world, const SA::Content::Bundle &bundle
 					npc.type = SA::World::NpcType::kWindowman;
 				else if (tstr == "welfare")
 					npc.type = SA::World::NpcType::kWelfare;
+				else if (tstr == "msg")
+					npc.type = SA::World::NpcType::kMsg;
+				else if (tstr == "mic")
+					npc.type = SA::World::NpcType::kMic;
+				else if (tstr == "action")
+					npc.type = SA::World::NpcType::kAction;
+				else if (tstr == "itemchange")
+					npc.type = SA::World::NpcType::kItemChange;
+				else if (tstr == "dengon")
+					npc.type = SA::World::NpcType::kDengon;
+				else if (tstr == "sysinfo")
+					npc.type = SA::World::NpcType::kSysinfo;
 				else
 					npc.type = SA::World::NpcType::kOther;
 			}

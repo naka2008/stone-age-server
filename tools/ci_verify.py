@@ -100,6 +100,7 @@ EXPECTED_TESTS = {
     # ── 阶段 13(2026-10-04,四大庄园特权/金库分红与骑乘认证)────────────
     "world_manor",        # ★ 阶段 13 四大庄园骑乘进阶考核/金库税收分红与特权技能树
     "world_npc_batch4",     # ★ P5-4 NPC 长尾第四批: WindowHealer/Janken/Airplane/BodyLan/CheckMan/Windowman/Welfare
+    "world_npc_batch5",     # ★ P5-5 NPC 长尾第五批: Msg/Mic/Action/ItemChange/Dengon/Sysinfo
     "world_item_p2rest",    # ★ P2 收尾: 剩余 10 个 usefunc (OtherEditBase/MagicDef/ParamChange/FieldChange/EffectToHelos/WatchBattle/WarpForNum)
     "world_item_p2noncore", # ★ P2 非核心: FusionEditBase/LearnRideCode/MaxRedSocks(seasonal)
     # ── 阶段 14(2026-10-04,全域排行榜与全服荣誉殿堂体系)──────────────

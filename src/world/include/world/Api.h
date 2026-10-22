@@ -779,6 +779,12 @@ enum class NpcType : std::uint8_t
 	kCheckMan = 38,       // 检查人 (原版 npc_checkman.c: 事件标记检查)
 	kWindowman = 39,      // 窗口男 (原版 npc_windowman.c: 配置消息窗口)
 	kWelfare = 40,        // 福利 (原版 npc_welfare.c: 职业技能)
+	kMsg = 41,            // 消息 (原版 npc_msg.c: 显示配置文案, 47 行)
+	kMic = 42,            // 麦克风 (原版 npc_mic.c: 同楼层广播, 160 行)
+	kAction = 43,         // 动作 (原版 npc_action.c: 表情反应, 138 行; 观察钩子待接)
+	kItemChange = 44,     // 物品交换 (原版 npc_itemchange.c: 多步窗口交换, 253 行)
+	kDengon = 45,         // 留言板 (原版 npc_dengon.c: 读写留言, 249 行; 内存版)
+	kSysinfo = 46,        // 系统信息 (原版 npc_sysinfo.c: GM 指令台, 841 行; 基础版)
 };
 
 // 记录点数据 (阶段 16 NPC:SavePoint, 原版 npc_savepoint.c)
@@ -2275,6 +2281,12 @@ class World final : public SA::Net::TransportEvents,
 	bool handleCheckManTalk(SA::Net::SessionId id, std::uint64_t npc_id);
 	bool handleWindowmanTalk(SA::Net::SessionId id, std::uint64_t npc_id);
 	bool handleWelfareTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleMsgTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleMicTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleActionTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleItemChangeTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleDengonTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleSysinfoTalk(SA::Net::SessionId id, std::uint64_t npc_id);
 
 	// 猜拳判定纯函数 (原版 NPC_JnakenJudge, npc_janken.c:204-260)
 	//   player_choice/npc_choice: 0=石头, 1=剪刀, 2=布

@@ -83,12 +83,12 @@
 | 22 | S22 saac 客户端 | 非 NPC | 3449 | 核心 | ✅ | `§9.0.123`(Phase 7: saac 模块静态库 sa_saac · 续体三元组 RequestEnvelope 世代隔离与 InFlight 超时管理，消弭原版 fdid 归零错发缺陷 C33 · 核心业务 RPC 封包/解包 · 排他锁与租约状态机，消弭原版移民锁误解缺陷 C45 · 8.0 独有跨线路全服广播/聊天室分发，对齐 00 §7 · saac_client 单元测试 · RV-Saac-1 变异实证全绿) | — |
 | 23 | S23 配置与启动 | 非 NPC | 3963 | 核心 | 🔄 | `§9.0.14`(1.5 入口接线:绑端口失败拒启 / SIGINT·SIGTERM 停机 / `server_self_test`) · `§9.0.16`(配置面) · `§9.0.59`(OpenSSL 根自动探测) | setup 295 参数全量对齐(`16` §13 引 `setup_params.json`) · 运营旋钮配置化(`§9.0.58` 残缺④) |
 | 24 | S24 私服扩展层(R2 可不保留) | 非 NPC | 1425 | 建议弃用 | ❌ | — | `16` §9.2:R2 已定「服务端只保留玩法」,私服运营扩展不迁移 |
-| 25 | NPC:Action | NPC(纯 C) | 138 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
+| 25 | NPC:Action | NPC(纯 C) | 138 | 长尾 | ✅ | — | P5-5 基础版: 对话显示 normal 文案; 表情观察钩子 TODO |
 | 26 | NPC:Alldoman | NPC(纯 C) | 387 | 长尾 | ⬜ | — | 同上 |
 | 27 | NPC:AutoPk | NPC(纯 C) | 859 | 长尾 | ⬜ | — | 同上 |
 | 28 | NPC:Bankman | NPC(纯 C) | 599 | 长尾 | ✅ | `§9.0.131`(阶段 15: 个人钱庄/银行个人金库独立载体 · DR-EC1 银行 1 亿上限与 100 万防爆仓 · bankDeposit/bankWithdraw 存取款 · kBankman NPC 弹窗交互; `world_gm` 5 用例/101 断言) | — |
 | 29 | NPC:Charm | NPC(纯 C) | 286 | 长尾 | ✅ | `§9.0.133`(原版 `npc_charm.c` 对齐 · 美容师魅力上升与经典公式计费/GoldLedger 扣费/在身宠物忠诚度滋养联动;`world_transit` 用例) | — |
-| 30 | NPC:Dengon | NPC(纯 C) | 249 | 长尾 | ⬜ | — | 同上 |
+| 30 | NPC:Dengon | NPC(纯 C) | 249 | 长尾 | ✅ | — | P5-5 基础版: 内存留言板 (原版用文件) |
 | 31 | NPC:Duelranking | NPC(纯 C) | 228 | 长尾 | ⬜ | — | NPC 层未启动;决斗点分配未做(`§9.0.40` 残缺④) |
 | 32 | NPC:fmchallenge | NPC(纯 C) | 715 | 建议弃用 | ❌ | — | `16` §9.2:实现文件不在 `npc/makefile` 的 `SRC=` ⇒ 不进 `libnpc.a` |
 | 33 | NPC:FmDengon | NPC(纯 C) | 1356 | 长尾 | ✅ | P5-3 | 家族布告栏基础版 (完整需 saac) |
@@ -96,10 +96,10 @@
 | 35 | NPC:FmLetter | NPC(纯 C) | 682 | 长尾 | ✅ | P5-3 | 家族信使基础版 (完整需 saac) |
 | 36 | NPC:NPC_GambleRoulette | NPC(纯 C) | 416 | 长尾 | ✅ | P5-2-1 | 轮盘小猪对话已实现, 动画待做 |
 | 37 | NPC:Healer | NPC(纯 C) | 181 | 长尾 | ✅ | `§9.0.72`(W.7:NPC 实体框架与 Healer 满血满蓝 + GoldLedger 扣费闭环;`world_map` 用例) | — |
-| 38 | NPC:itemchange | NPC(纯 C) | 253 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
+| 38 | NPC:itemchange | NPC(纯 C) | 253 | 长尾 | ✅ | — | P5-5 基础版: 交换说明窗口; 多步菜单流 TODO |
 | 39 | NPC:ManorSman | NPC(纯 C) | 986 | 长尾 | ✅ | P5-3 | 对话主流程已移植(npc_manorsman.c:130-260);PK 调度/报名/气势排名待跨服系统 |
-| 40 | NPC:Mic | NPC(纯 C) | 160 | 长尾 | ⬜ | — | 同上 |
-| 41 | NPC:Msg | NPC(纯 C) | 47 | 长尾 | ⬜ | — | 同上(零实例化配置残留,见 Q12 依据) |
+| 40 | NPC:Mic | NPC(纯 C) | 160 | 长尾 | ✅ | — | P5-5 基础版: LINE_INPUT 收广播内容, 推送同楼层; 族长 saac 广播 TODO |
+| 41 | NPC:Msg | NPC(纯 C) | 47 | 长尾 | ✅ | — | P5-5: 显示配置文案(零实例化配置残留,见 Q12 依据) |
 | 42 | NPC:NewVipShop | NPC(纯 C) | 256 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号 ⇒ 8.0 生产二进制里不存在 |
 | 43 | NPC:Oldman | NPC(纯 C) | 111 | 长尾 | ✅ | `§9.0.133`(原版 `npc_oldman.c` 对齐 · 称号长者资格认定/等级转生门槛核查/资格称号发放/经典台词复刻;`world_transit` 用例) | — |
 | 44 | NPC:pauctionman | NPC(纯 C) | 466 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号 |
@@ -149,7 +149,7 @@
 | 88 | NPC:SavePoint | NPC(消费 DSL) | 532 | 长尾 | ✅ | `§9.0.132`(原版 `npc_savepoint.c` 对齐 · 四大村庄记录点长者/YesNo确认/星球启动时间与在线人数对白/死亡回城重生;`world_transit` 用例) | — |
 | 89 | NPC:ship | NPC(消费 DSL) | 758 | 建议弃用 | ❌ | — | `16` §9.2:实现文件不在 `npc/makefile` 的 `SRC=` |
 | 90 | NPC:SimpleShop | NPC(消费 DSL) | 723 | 建议弃用 | ❌ | — | `16` §9.2:Q9 三重证据判定的死子系统 |
-| 91 | NPC:Sysinfo | NPC(消费 DSL) | 841 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2);`EnemyMoveNum` 经 Sysinfo 在线改(`16` §12.5) |
+| 91 | NPC:Sysinfo | NPC(消费 DSL) | 841 | 长尾 | ✅ | — | P5-5 基础版: 说明窗口; GM 指令表 TODO;`EnemyMoveNum` 经 Sysinfo 在线改(`16` §12.5) |
 | 92 | NPC:Transmigration | NPC(消费 DSL) | 1649 | 长尾 | ✅ | `§9.0.96`(转生五次方与 Fx 档位算力精确验证 · 转生师 NPC 交互闭环;`world_map` 用例) | — |
 | 93 | NPC:Warp | NPC(消费 DSL) | 318 | 核心 | ✅ | `§9.0.71`/`§9.0.80`/`§9.0.81`(W.6/D.1/D.2:WARP 踩踏瞬移、跨图通行解耦与 164 传送点装载;`world_map` 用例) | — |
 | 94 | NPC:WarpMan | NPC(消费 DSL) | 1057 | 核心 | ✅ | `§9.0.79`(W.14:WarpMan 对话确认传送与 GoldLedger 扣费 `warpPlayerByNpc`;`world_map` 用例) | 特殊任务前置条件门 |

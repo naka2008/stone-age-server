@@ -97,6 +97,12 @@ sa_apply_warnings(sa_world_npc_batch4_test)
 sa_enable_assertions(sa_world_npc_batch4_test)
 add_test(NAME world_npc_batch4 COMMAND sa_world_npc_batch4_test)
 
+add_executable(sa_world_npc_batch5_test WorldNpcBatch5Test.cpp)
+target_link_libraries(sa_world_npc_batch5_test PRIVATE sa_world sa_shared sa_doctest)
+sa_apply_warnings(sa_world_npc_batch5_test)
+sa_enable_assertions(sa_world_npc_batch5_test)
+add_test(NAME world_npc_batch5 COMMAND sa_world_npc_batch5_test)
+
 add_executable(sa_world_item_p2rest_test WorldItemP2RestTest.cpp)
 target_link_libraries(sa_world_item_p2rest_test PRIVATE sa_world sa_shared sa_doctest)
 sa_apply_warnings(sa_world_item_p2rest_test)

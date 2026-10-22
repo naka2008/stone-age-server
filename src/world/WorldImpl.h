@@ -830,6 +830,9 @@ struct World::Impl : GoldAuditSink
 	};
 	std::map<SA::Net::SessionId, PlayerExtraStats> player_extra_stats{}; // ★ #52: 原 unordered_map 在测试中出现 0-bucket SIGFPE，改用 std::map 防崩 (无哈希取模)
 
+	// ── P5-5: 留言板 (原版 npc_dengon.c 用文件存每 NPC 留言; 这里用内存版, key = npc_id) ──
+	std::map<std::uint64_t, std::vector<std::string>> dengon_boards{};
+
 	struct PlayerTitleData
 	{
 		std::vector<int> owned_titles{};
