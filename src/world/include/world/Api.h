@@ -44,6 +44,9 @@
 #include "rules/WeaponMastery.h"
 #include "saac/Api.h"
 #include "session_storage/Api.h"
+#include "world/WindowSession.h"
+
+#include <utility> // std::pair (sendSelectWindow 选项列表)
 
 namespace SA::World
 {
@@ -2003,6 +2006,23 @@ class World final : public SA::Net::TransportEvents,
 	void onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req) override;
 	void onWindowReply(SA::Net::SessionId id,
 	                   const SA::Domain::WindowReply &reply) override;
+	// ── 窗口会话 helper (DR-PR3) ──
+	// 发送选择框窗口并注册回执 handler; 返回 window_id (0 = 会话不存在)。
+	// options: (choice_id, 文本) 列表, choice_id 由调用方自定 (显式 id, 非位置序号)。
+	std::uint32_t sendSelectWindow(SA::Net::SessionId id, std::uint64_t npc_id,
+	                               const std::string &message,
+	                               const std::vector<std::pair<std::uint32_t, std::string>> &options,
+	                               WindowSessionManager::ReplyHandler handler,
+	                               std::uint32_t buttons = static_cast<std::uint32_t>(
+	                                   SA::Domain::ButtonFlag::BUTTON_FLAG_CANCEL));
+	// 发送单行输入窗口并注册回执 handler; 返回 window_id (0 = 会话不存在)。
+	std::uint32_t sendInputWindow(SA::Net::SessionId id, std::uint64_t npc_id,
+	                              const std::string &prompt, std::uint32_t max_len,
+	                              WindowSessionManager::ReplyHandler handler,
+	                              std::uint32_t buttons = static_cast<std::uint32_t>(
+	                                                          SA::Domain::ButtonFlag::BUTTON_FLAG_OK) |
+	                                                      static_cast<std::uint32_t>(
+	                                                          SA::Domain::ButtonFlag::BUTTON_FLAG_CANCEL));
 	void onBattleCommand(SA::Net::SessionId id,
 	                     const SA::Domain::BattleCommand &cmd) override;
 	void onSessionClosed(SA::Net::SessionId id) override;

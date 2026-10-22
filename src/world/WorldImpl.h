@@ -38,6 +38,7 @@
 #include "rules/ProfessionSkill.h"
 #include "rules/Progression.h"
 #include "rules/Status.h"
+#include "world/WindowSession.h"
 
 namespace SA::World
 {
@@ -485,6 +486,9 @@ struct World::Impl : GoldAuditSink
 
 	SA::Rules::SeededRandom world_rng;
 	std::uint32_t next_window_id = 0;
+
+	// 窗口会话管理器 (DR-PR3): window_id → handler 路由, 取代原版 seqno 全局链。
+	WindowSessionManager window_sessions_;
 
 	std::map<SA::Net::ConnectionId, Conn> conns;
 	std::map<BattleId, BattleInstance> battles;

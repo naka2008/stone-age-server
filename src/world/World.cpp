@@ -1445,6 +1445,8 @@ void World::onSessionReady(SA::Net::SessionId id)
 
 void World::onSessionClosed(SA::Net::SessionId id)
 {
+	// 清理该会话的窗口会话 (DR-PR3): 避免 handler 悬挂。
+	_impl->window_sessions_.clearSession(id);
 	_impl->notifyAddressBookStatus(id, false);
 	{
 		auto fit = _impl->session_to_family.find(id);

@@ -356,6 +356,95 @@ void World::Impl::sendExChangeWindow(SA::Net::SessionId id, std::uint64_t npc_id
 	sendTo(id, win);
 }
 
+// ── 窗口会话 helper (DR-PR3) ──────────────────────────────────────
+// 发送选择框窗口并注册回执 handler。对应原版 lssproto_WN_send 的 SELECT 类型,
+// 但回执路由走 WindowSessionManager (window_id → handler), 不用全局 seqno。
+
+std::uint32_t World::sendSelectWindow(SA::Net::SessionId id, std::uint64_t npc_id,
+                                      const std::string &message,
+                                      const std::vector<std::pair<std::uint32_t, std::string>> &options,
+                                      WindowSessionManager::ReplyHandler handler,
+                                      std::uint32_t buttons)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	if (it == s.conns.end())
+		return 0;
+
+	const std::uint32_t wid = s.window_sessions_.openWindow(id, std::move(handler));
+
+	SA::Domain::WindowOpen win{};
+	win.window_id = wid;
+	win.kind = SA::Domain::WindowKind::WINDOW_KIND_SELECT;
+	win.buttons = buttons;
+	win.source.source = SA::Domain::EntitySource::ENTITY_SOURCE_ENTITY;
+	win.source.entity_id = static_cast<std::uint32_t>(npc_id);
+	win.body_kind = SA::Domain::WindowOpen::BodyKind::SELECT;
+
+	std::string msg = message;
+	if (msg.size() > 255)
+		msg.resize(255);
+	if (auto *slot = win.body.select.lines.push_back())
+		slot->assign(msg.data(), msg.size());
+
+	const std::size_t limit = std::min<std::size_t>(options.size(), 32);
+	for (std::size_t i = 0; i < limit; ++i)
+	{
+		if (auto *choice = win.body.select.choices.push_back())
+		{
+			choice->choice_id = options[i].first;
+			std::string text = options[i].second;
+			if (text.size() > 255)
+				text.resize(255);
+			choice->text.assign(text.data(), text.size());
+			choice->enabled = true;
+		}
+	}
+
+	it->second.active_window_id = wid;
+	it->second.active_window_npc_id = npc_id;
+	it->second.last_window_text = message;
+	s.sendTo(id, win);
+	return wid;
+}
+
+// 发送单行输入窗口并注册回执 handler。对应原版 MESSAGEANDLINEINPUT 类型。
+
+std::uint32_t World::sendInputWindow(SA::Net::SessionId id, std::uint64_t npc_id,
+                                     const std::string &prompt, std::uint32_t max_len,
+                                     WindowSessionManager::ReplyHandler handler,
+                                     std::uint32_t buttons)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	if (it == s.conns.end())
+		return 0;
+
+	const std::uint32_t wid = s.window_sessions_.openWindow(id, std::move(handler));
+
+	SA::Domain::WindowOpen win{};
+	win.window_id = wid;
+	win.kind = SA::Domain::WindowKind::WINDOW_KIND_LINE_INPUT;
+	win.buttons = buttons;
+	win.source.source = SA::Domain::EntitySource::ENTITY_SOURCE_ENTITY;
+	win.source.entity_id = static_cast<std::uint32_t>(npc_id);
+	win.body_kind = SA::Domain::WindowOpen::BodyKind::LINE_INPUT;
+	win.body.line_input.max_len = max_len;
+	win.body.line_input.wide = false;
+
+	std::string msg = prompt;
+	if (msg.size() > 255)
+		msg.resize(255);
+	if (auto *slot = win.body.line_input.lines.push_back())
+		slot->assign(msg.data(), msg.size());
+
+	it->second.active_window_id = wid;
+	it->second.active_window_npc_id = npc_id;
+	it->second.last_window_text = prompt;
+	s.sendTo(id, win);
+	return wid;
+}
+
 bool World::Impl::checkExChangePreconditions(const SA::Model::Player &p,
                                              const ExChangeBlock &blk, int branch_idx,
                                              std::string &msg_out,
@@ -1887,6 +1976,11 @@ void World::onWindowReply(SA::Net::SessionId id, const SA::Domain::WindowReply &
 	const auto it = s.conns.find(id);
 	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
 	if (it == s.conns.end() || p == nullptr)
+		return;
+
+	// ★ 窗口会话管理器优先路由 (DR-PR3): 若该 window_id 有注册的 handler,
+	//   则由 handler 消费并关闭窗口会话, 不再走下面的旧派发路径。
+	if (s.window_sessions_.onReply(id, reply))
 		return;
 
 	// 校验 window_id 是否匹配当前会话开启的活动窗口 (DR-PR3 / DR-PR8)
