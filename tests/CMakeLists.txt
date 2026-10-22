@@ -103,6 +103,12 @@ sa_apply_warnings(sa_world_item_p2rest_test)
 sa_enable_assertions(sa_world_item_p2rest_test)
 add_test(NAME world_item_p2rest COMMAND sa_world_item_p2rest_test)
 
+add_executable(sa_world_item_p2noncore_test WorldItemP2NonCoreTest.cpp)
+target_link_libraries(sa_world_item_p2noncore_test PRIVATE sa_world sa_shared sa_doctest)
+sa_apply_warnings(sa_world_item_p2noncore_test)
+sa_enable_assertions(sa_world_item_p2noncore_test)
+add_test(NAME world_item_p2noncore COMMAND sa_world_item_p2noncore_test)
+
 add_executable(sa_world_leaderboard_test WorldLeaderboardTest.cpp)
 target_link_libraries(sa_world_leaderboard_test PRIVATE sa_world sa_shared sa_doctest)
 sa_apply_warnings(sa_world_leaderboard_test)

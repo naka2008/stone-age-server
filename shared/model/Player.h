@@ -143,6 +143,11 @@ struct Player
 	std::int64_t encounter_rate_expire_ms = 0;
 	// 未分配属性点 (原 CHAR_SKILLUPPOINT，每次升级 +3 点，批次 P.1)
 	std::int32_t skillup_points = 0;
+	// 转生次数 (原 CHAR_TRANSMIGRATION, ITEM_useLearnRideCode 门槛判定用)
+	std::int32_t transmigration = 0;
+	// 已学骑乘代码位掩码 (原 CHAR_LOWRIDEPETS, RIDE_PET0..11 对应 bit 0..11)
+	// ★ 8.0: ITEM_useLearnRideCode (item_event.c:3568) 按位或写入
+	std::int32_t lowridepets = 0;
 	std::int32_t hp = 0;
 	std::int32_t mp = 100;
 	std::int32_t max_mp = 100;

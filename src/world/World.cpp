@@ -1153,6 +1153,61 @@ int World::useItemInField(SA::Net::SessionId session, int item_slot,
 		consumed = true;
 	}
 
+	// ── 融合成长率修改 (ITEM_useFusionEditBase, item_event.c:3631) ──
+	// 原版：目标必须是宠物 (CHAR_WHICHTYPE == CHAR_TYPEPET)；
+	// 若宠物在融合中 (FUSIONBEIT==1 && FUSIONRAISE>0) 处理时间逻辑；
+	// 然后 PET_showEditBaseMsg 开窗口让玩家修改四围成长率。
+	// ⚠️ 完整窗口流程待窗口 UI 补齐；此处仅做目标校验，消耗道具。
+	if (eff->is_fusion_edit_base && target_pet != nullptr)
+	{
+		// 目标是宠物即合法；融合中的时间逻辑与窗口编辑待补
+		// TODO: 窗口 UI 补齐后接 PET_showEditBaseMsg 流程
+		consumed = true;
+	}
+
+	// ── 骑乘代码学习 (ITEM_useLearnRideCode, item_event.c:3568) ──
+	// 原版：ITEM_ARGUMENT = "RIDE_PETx|显示名|转生要求"；
+	// 若玩家转生次数 < 要求则提示并返回（不消耗）；
+	// 否则按位或写入 CHAR_LOWRIDEPETS，消耗道具。
+	if (eff->is_learn_ride_code && target_player != nullptr)
+	{
+		if (target_player->transmigration < eff->ride_trans_required)
+		{
+			// 转生不足：不消耗，原版提示"需要%d转后才能学习"
+			return -7;
+		}
+		if (eff->ride_code_index >= 0 && eff->ride_code_index < 12)
+		{
+			target_player->lowridepets |= (1 << eff->ride_code_index);
+		}
+		consumed = true;
+	}
+
+	// ── 圣诞红袜子 (ITEM_useMaxRedSocks, item_event.c:2671) ──
+	// ⚠️ seasonal: 原版是圣诞活动道具。
+	// 原版：ITEM_ARGUMENT 为可开启时间戳 itemtimes；
+	// 若 now 在 [itemtimes, itemtimes+24h] 内则消耗并随机给礼物
+	// (present[13] = {13061,13062,13063,13064,13088,13089,13090,13091,
+	//  14756,17256,13092,19692,20594}，加权随机: >70→10-12, >60→8-9, 否则0-7)；
+	// 太早则显示倒计时，过期则提示已过期（均不消耗）。
+	// 此处简化：时间窗口内直接消耗（发奖待道具表补齐）。
+	if (eff->is_max_red_socks && target_player != nullptr)
+	{
+		const auto now = std::chrono::system_clock::now();
+		const auto now_secs =
+		    std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch())
+		        .count();
+		constexpr std::int64_t kWindowSecs = 24 * 60 * 60;
+		if (now_secs >= eff->redsocks_open_time &&
+		    now_secs <= eff->redsocks_open_time + kWindowSecs)
+		{
+			// 时间窗口内：消耗并给奖（加权随机选礼物，待道具表）
+			// 原版加权：si=rand()%100; >70→rand()%3+10; >60→rand()%2+8; 否则rand()%8
+			consumed = true;
+		}
+		// 太早或过期：不消耗（原版显示提示）
+	}
+
 	if (!consumed)
 		return -6; // 有效果表项但无可执行效果
 

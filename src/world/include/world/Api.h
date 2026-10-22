@@ -1176,6 +1176,15 @@ struct ItemEffect
 	bool param_change_percent = false;  // 是否百分比
 	bool is_field_change = false;       // 场地变更 (ITEM_useFieldChange_Battle, battle_item.c:578)
 	std::int32_t field_change_attr = 0; // 场地属性 (ITEM_ARGUMENT)
+	// ── P2 非核心: 剩余 3 个 usefunc ──
+	bool is_fusion_edit_base = false; // 融合成长率修改 (ITEM_useFusionEditBase, item_event.c:3631)
+	// ⚠️ 完整流程需窗口 UI (PET_showEditBaseMsg)；此处仅做目标校验与消耗
+	bool is_learn_ride_code = false;      // 骑乘代码学习 (ITEM_useLearnRideCode, item_event.c:3568)
+	std::int32_t ride_code_index = 0;     // RIDE_PET0..11 (0-11, ITEM_ARGUMENT 第1段)
+	std::int32_t ride_trans_required = 0; // 需要的转生次数 (ITEM_ARGUMENT 第3段)
+	bool is_max_red_socks = false;        // 圣诞红袜子 (ITEM_useMaxRedSocks, item_event.c:2671)
+	// ⚠️ seasonal: 仅圣诞期间有效；open_time 为可开启时间戳 (ITEM_ARGUMENT)
+	std::int64_t redsocks_open_time = 0;
 };
 
 // 魔法与精灵术效果表的一行 (阶段 5.1)
