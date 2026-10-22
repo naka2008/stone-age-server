@@ -894,6 +894,12 @@ void projectItemUsePower(BattleInstance &b, PlayerPool &players, const ItemPool 
 		atk.mods.item_heal_power = 0; // 每回合重算
 		atk.mods.item_mp_power = 0;
 		atk.mods.item_spell_kind = SA::Rules::SpellKind::kNone;
+		atk.mods.item_magic_def_kind = 0;
+		atk.mods.item_magic_def_turns = 0;
+		atk.mods.item_param_change_kind = 0;
+		atk.mods.item_param_change_power = 0;
+		atk.mods.item_param_change_percent = false;
+		atk.mods.item_field_change_attr = -1;
 
 		// 攻方 L2 玩家 + 其指定背包槽的道具 ⇒ item_id ⇒ 查效果表得参数。
 		SA::Model::Player *owner =
@@ -920,6 +926,24 @@ void projectItemUsePower(BattleInstance &b, PlayerPool &players, const ItemPool 
 				atk.mods.item_spell_element = eff->item_spell_element;
 				atk.mods.item_spell_power = eff->item_spell_power;
 				atk.mods.item_spell_magic_level = eff->item_spell_magic_level;
+			}
+			// ── P2 收尾: 魔法防御 (ITEM_useMagicDef_Battle, battle_item.c:452) ──
+			if (eff->is_magic_def)
+			{
+				atk.mods.item_magic_def_kind = eff->magic_def_kind;
+				atk.mods.item_magic_def_turns = eff->magic_def_turns;
+			}
+			// ── P2 收尾: 参数变更 (ITEM_useParamChange_Battle, battle_item.c:509) ──
+			if (eff->is_param_change)
+			{
+				atk.mods.item_param_change_kind = eff->param_change_kind;
+				atk.mods.item_param_change_power = eff->param_change_power;
+				atk.mods.item_param_change_percent = eff->param_change_percent;
+			}
+			// ── P2 收尾: 场地变更 (ITEM_useFieldChange_Battle, battle_item.c:578) ──
+			if (eff->is_field_change)
+			{
+				atk.mods.item_field_change_attr = eff->field_change_attr;
 			}
 		}
 	}

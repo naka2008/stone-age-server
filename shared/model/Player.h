@@ -116,6 +116,11 @@ struct Player
 	// true = 发言广播给全服（原版麦克风道具开关）。
 	bool mic_mode = false;
 
+	// 捕获率提升 (原 `CHAR_WORK_TOHELOS_CUTRATE` / `CHAR_WORK_TOHELOS_COUNT`,
+	// item_event.c:508 ITEM_useEffectTohelos)。cutrate = 捕获率削减值，count = 剩余次数。
+	std::int32_t helos_cutrate = 0;
+	std::int32_t helos_count = 0;
+
 	// 累计捕获数(原 `CHAR_GETPETCOUNT`,源码 `battle_event.c:3543`)。
 	std::int32_t capture_count = 0;
 

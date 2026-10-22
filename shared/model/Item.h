@@ -103,6 +103,10 @@ struct Item
 	//   不可用(空格)。⚠️ 掉落/捕获路径回填 current_pile 已随本批补上(World.cpp 造 Item 处)。
 	std::int32_t current_pile = 0;
 
+	// ── 传送记录次数 (原 `ITEM_DAMAGEBREAK`, item_event.c:1991 ITEM_useWarpForNum) ──
+	// WarpForNum 道具的剩余使用次数。每次记录位置时减 1，归零则删除并传送。
+	std::int32_t warp_uses = 0;
+
 	// ── 掉落 / 存档行为(源码 `ITEM_DATAINT`,展开视图启用)────────────────
 	//
 	// ★ `ITEM_VANISHATDROP`(掉落即消失)/ `ITEM_DROPATLOGOUT`(登出掉落)——

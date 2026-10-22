@@ -407,6 +407,13 @@ struct CombatModifiers
 	int item_capture_bonus = 0;    // 捕获率加成 (ITEM_useCaptureUp, item_event.c:1294)
 	bool item_att_reverse = false; // 属性反转 (ITEM_useAttReverse, item_event.c:1267)
 	int item_status_change = 0;    // 施加状态ID (ITEM_useStatusChange, item_event.c:1202)
+	// ── P2 收尾: 战斗道具特殊效果 (battle_item.c) ──
+	int item_magic_def_kind = 0;            // 魔法防御种类 (ITEM_useMagicDef_Battle, battle_item.c:452; BATTLE_MD_*: 1=吸, 2=反, 3=无)
+	int item_magic_def_turns = 0;           // 魔法防御持续回合
+	int item_param_change_kind = 0;         // 参数变更种类 (ITEM_useParamChange_Battle, battle_item.c:509; PC_KIND_*: 1=攻, 2=防, 3=速, 4=魅, 5=捕)
+	int item_param_change_power = 0;        // 参数变更数值
+	bool item_param_change_percent = false; // 是否百分比
+	int item_field_change_attr = -1;        // 场地属性变更 (ITEM_useFieldChange_Battle, battle_item.c:578; -1=无)
 };
 
 // ── 一个战斗单位 ──────────────────────────────────────────────
@@ -600,6 +607,22 @@ struct Combatant
 
 	constexpr bool isEnemy() const noexcept { return kind == CombatantKind::kEnemy; }
 	constexpr bool isPlayer() const noexcept { return kind == CombatantKind::kPlayer; }
+
+	// ── P2 收尾: 魔法防御计数器 (原 CHAR_WORKDAMAGEABSROB/REFLEC/VANISH, ──
+	//    battle_magic.c:2131 BATTLE_MultiMagicDef) ──
+	// 吸收/反射/无效化魔法伤害的剩余回合数。>0 时生效，每回合递减。
+	std::int32_t magic_def_absrob_turns = 0;
+	std::int32_t magic_def_reflec_turns = 0;
+	std::int32_t magic_def_vanish_turns = 0;
+
+	// ── P2 收尾: 参数修正 (原 CHAR_WORKMODATTACK/DEFENCE/QUICK/CHARM/CAPTURE, ──
+	//    battle_magic.c:2187 BATTLE_MultiParamChange) ──
+	// 战斗中临时的攻/防/速/魅/捕修正值（可正可负），原版以 100 为单位存储。
+	std::int32_t mod_attack = 0;
+	std::int32_t mod_defense = 0;
+	std::int32_t mod_quick = 0;
+	std::int32_t mod_charm = 0;
+	std::int32_t mod_capture = 0;
 };
 
 // ── 战场快照 ──────────────────────────────────────────────────

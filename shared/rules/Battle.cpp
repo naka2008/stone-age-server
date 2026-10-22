@@ -2076,9 +2076,14 @@ static bool resolveOrdered(BattleField field,
 			// ── P2 第二批: 战斗道具特殊效果 ──
 			const bool att_reverse = actor.mods.item_att_reverse;
 			const int status_change = actor.mods.item_status_change;
+			// ── P2 收尾: 战斗道具特殊效果 (battle_item.c) ──
+			const int md_kind = actor.mods.item_magic_def_kind;
+			const int pc_kind = actor.mods.item_param_change_kind;
+			const int fc_attr = actor.mods.item_field_change_attr;
 
 			if (power <= 0 && mp_power <= 0 && item_sp_kind == SpellKind::kNone &&
-			    !att_reverse && status_change <= 0)
+			    !att_reverse && status_change <= 0 && md_kind <= 0 &&
+			    pc_kind <= 0 && fc_attr < 0)
 				continue;
 
 			int use_target = static_cast<int>(cmd.command.use_item.target);
@@ -2200,6 +2205,86 @@ static bool resolveOrdered(BattleField field,
 					    static_cast<SA::Domain::BattleStatus>(status_change);
 					sc->body.status_change.applied = true;
 				}
+			}
+
+			// ── P2 收尾: 魔法防御道具 (ITEM_useMagicDef_Battle, battle_item.c:452) ──
+			// 原版：BATTLE_MultiMagicDef 设置目标的 CHAR_WORKDAMAGE* 计数器，持续 turn 回合。
+			// BATTLE_MD_*: 1=吸(ABSROB), 2=反(REFLEC), 3=无(VANISH)
+			const int md_turns = actor.mods.item_magic_def_turns;
+			if (md_kind >= 1 && md_kind <= 3 && md_turns > 0)
+			{
+				// 目标展开：与恢复药同款单体目标逻辑
+				int md_targets[kSlotCount]{};
+				std::size_t md_n = 0;
+				// 简化：只对 use_target 生效（原版 BATTLE_MultiList 展开，此处取单体）
+				if (use_target >= 0 && use_target < kSlotCount)
+					md_targets[md_n++] = use_target;
+				for (std::size_t i = 0; i < md_n; ++i)
+				{
+					Combatant &tgt = field.at(md_targets[i]);
+					if (!tgt.occupied || dead[md_targets[i]])
+						continue;
+					if (md_kind == 1)
+						tgt.magic_def_absrob_turns = md_turns;
+					else if (md_kind == 2)
+						tgt.magic_def_reflec_turns = md_turns;
+					else if (md_kind == 3)
+						tgt.magic_def_vanish_turns = md_turns;
+				}
+			}
+
+			// ── P2 收尾: 参数变更道具 (ITEM_useParamChange_Battle, battle_item.c:509) ──
+			// 原版：BATTLE_MultiParamChange 修改目标的 WORKMOD* 值。
+			// PC_KIND_*: 1=攻, 2=防, 3=速, 4=魅, 5=捕
+			// power 为数值；若 percent 则 work = 原值 * power，否则 work = power * 100。
+			const int pc_power = actor.mods.item_param_change_power;
+			const bool pc_percent = actor.mods.item_param_change_percent;
+			if (pc_kind >= 1 && pc_kind <= 5 && pc_power != 0)
+			{
+				if (use_target >= 0 && use_target < kSlotCount)
+				{
+					Combatant &tgt = field.at(use_target);
+					if (tgt.occupied && !dead[use_target])
+					{
+						std::int32_t work = 0;
+						if (pc_percent)
+						{
+							// 百分比：基于当前对应属性值
+							std::int32_t base = 0;
+							if (pc_kind == 1)
+								base = tgt.attack;
+							else if (pc_kind == 2)
+								base = tgt.defense;
+							else if (pc_kind == 3)
+								base = tgt.quick;
+							else if (pc_kind == 4)
+								base = tgt.charm;
+							// 捕 (5) 无基础属性，base 保持 0
+							work = base * pc_power;
+						}
+						else
+						{
+							work = pc_power * 100;
+						}
+						if (pc_kind == 1)
+							tgt.mod_attack += work;
+						else if (pc_kind == 2)
+							tgt.mod_defense += work;
+						else if (pc_kind == 3)
+							tgt.mod_quick += work;
+						else if (pc_kind == 4)
+							tgt.mod_charm += work;
+						else if (pc_kind == 5)
+							tgt.mod_capture += work;
+					}
+				}
+			}
+
+			// ── P2 收尾: 场地变更道具 (ITEM_useFieldChange_Battle, battle_item.c:578) ──
+			// 原版：BATTLE_FieldAttChange(charaindex, pArg) 变更战斗场地属性。
+			if (fc_attr >= 0)
+			{
+				field.field_attribute = static_cast<std::uint8_t>(fc_attr);
 			}
 
 			if (effects != nullptr)

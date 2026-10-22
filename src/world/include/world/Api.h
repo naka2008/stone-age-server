@@ -1153,6 +1153,29 @@ struct ItemEffect
 	bool is_rename_item = false;      // 改名道具 (ITEM_useRenameItem, item_event.c:1459)
 	bool is_pet_skill_canned = false; // 宠技罐头 (ITEM_usePetSkillCanned, item_event.c:1327)
 	std::int32_t canned_skill_id = 0; // 罐头中的技能ID (ITEM_ARGUMENT)
+	// ── P2 收尾: 剩余 usefunc ──
+	bool is_other_edit_base = false;     // 成长率修改 (ITEM_useOtherEditBase, item_event.c:1121)
+	std::int32_t edit_attack = 0;        // 腕力成长率修正 (ITEM_MODIFYATTACK)
+	std::int32_t edit_defense = 0;       // 耐久力成长率修正 (ITEM_MODIFYDEFENCE)
+	std::int32_t edit_quick = 0;         // 速度成长率修正 (ITEM_MODIFYQUICK)
+	std::int32_t edit_hp = 0;            // 体力成长率修正 (ITEM_MODIFYHP)
+	bool is_effect_to_helos = false;     // 捕获率提升 (ITEM_useEffectTohelos, item_event.c:508)
+	std::int32_t helos_cutrate = 0;      // 捕获率削减值 (ITEM_ARGUMENT "cutrate|count")
+	std::int32_t helos_count = 0;        // 持续次数
+	bool is_watch_battle = false;        // 观战 (ITEM_useWatchBattle, item_event.c:2508)
+	std::int32_t watch_battle_index = 0; // 观战的战斗场次 (ITEM_ARGUMENT)
+	bool is_warp_for_num = false;        // 记录/传送 (ITEM_useWarpForNum, item_event.c:1991)
+	// 目的地复用 warp_floor/warp_x/warp_y；次数由道具的 damage_crushe 存
+	// ── P2 收尾: 战斗内 usefunc (battle_item.c) ──
+	bool is_magic_def = false;          // 魔法防御 (ITEM_useMagicDef_Battle, battle_item.c:452)
+	std::int32_t magic_def_kind = 0;    // BATTLE_MD_* (1=吸, 2=反, 3=无)
+	std::int32_t magic_def_turns = 0;   // 持续回合 (ITEM_ARGUMENT "turn")
+	bool is_param_change = false;       // 参数变更 (ITEM_useParamChange_Battle, battle_item.c:509)
+	std::int32_t param_change_kind = 0; // PC_KIND_* (1=攻, 2=防, 3=速, 4=魅, 5=捕)
+	std::int32_t param_change_power = 0;
+	bool param_change_percent = false;  // 是否百分比
+	bool is_field_change = false;       // 场地变更 (ITEM_useFieldChange_Battle, battle_item.c:578)
+	std::int32_t field_change_attr = 0; // 场地属性 (ITEM_ARGUMENT)
 };
 
 // 魔法与精灵术效果表的一行 (阶段 5.1)
