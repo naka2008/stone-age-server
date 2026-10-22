@@ -8,7 +8,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
-#include "world/WindowSession.h"
+#include "WindowSession.h"
 
 using namespace SA::World;
 

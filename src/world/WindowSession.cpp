@@ -4,7 +4,7 @@
 // 原版用全局 CHAR_WINDOWTYPE_* 常量做键; 本实现用 (session, window_id) 做键,
 // 状态存在服务端, 不建全局编号空间 (DR-PR3)。
 
-#include "world/WindowSession.h"
+#include "WindowSession.h"
 
 namespace SA::World
 {

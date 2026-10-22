@@ -107,6 +107,8 @@ EXPECTED_TESTS = {
     "world_transit",      # ★ 阶段 16 NPC:StoryTeller/TimeMan/SavePoint/Bus长毛象公车
     # ── 阶段 18(2026-10-15,地下城多层迷宫与漆黑洞窟视野探险系统)──────────
     "world_dungeon",      # ★ 阶段 18 地下城多层迷宫/上下楼梯穿梭/漆黑洞窟视野与火把
+    # ── 窗口 UI 系统 (2026-10-22) ──────────
+    "window_session",     # ★ 窗口会话管理器:window_id 路由/一次性语义 (DR-PR3)
 }
 
 

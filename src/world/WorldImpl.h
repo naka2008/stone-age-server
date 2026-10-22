@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "WindowSession.h"
 #include "WorldWeather.h"
 #include "data/Json.h"
 #include "model/Enemy.h"
@@ -38,7 +39,6 @@
 #include "rules/ProfessionSkill.h"
 #include "rules/Progression.h"
 #include "rules/Status.h"
-#include "world/WindowSession.h"
 
 namespace SA::World
 {

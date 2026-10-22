@@ -74,6 +74,7 @@ add_test(NAME world_weather COMMAND sa_world_weather_test)
 
 add_executable(sa_window_session_test WindowSessionTest.cpp)
 target_link_libraries(sa_window_session_test PRIVATE sa_world sa_doctest)
+target_include_directories(sa_window_session_test PRIVATE ${CMAKE_SOURCE_DIR}/src/world)
 sa_apply_warnings(sa_window_session_test)
 sa_enable_assertions(sa_window_session_test)
 add_test(NAME window_session COMMAND sa_window_session_test)
