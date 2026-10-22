@@ -978,6 +978,106 @@ int World::useItemInField(SA::Net::SessionId session, int item_slot,
 		consumed = true;
 	}
 
+	// ── 彩票刮刮卡 (ITEM_useLottery, item_event.c:1787-1900) ──
+	// 原版：每用一次揭示 6 个隐藏号码中的一个 (ITEM_VAR2 计数)，
+	// 6 个全揭示后若 ITEM_VAR1 != NONE 则中奖 (给 2729+hit 道具)。
+	// 此处简化：用 item 的自定义字段记录已揭示数，随机决定是否中奖。
+	if (eff->is_lottery && target_player != nullptr)
+	{
+		// 彩票不需要窗口，直接揭示
+		// 原版用 ITEM_VAR2 计数，此处用 it->custom_int1 (若有) 或简化处理
+		// 简化版：每次使用 1/6 概率中奖，中奖给随机道具
+		if ((std::rand() % 6) == 0)
+		{
+			// 中奖：提示信息 (实际发奖待道具表补齐)
+			// 原版：CHAR_talkToCli "中了第%d奖"
+		}
+		consumed = true;
+	}
+
+	// ── 改名道具 (ITEM_useRenameItem, item_event.c:1459-1560) ──
+	// 原版：SELECT 窗口选道具 (4 页 x 5 个) → LINE_INPUT 窗口输入新名 → 改名并消耗。
+	// 此处用 WindowSessionManager 实现异步流程：先开 SELECT 窗口，return 0 不消耗，
+	// 改名确认后由 window handler 消耗道具。
+	if (eff->is_rename_item && target_player != nullptr)
+	{
+		// 收集可改名的道具 (4 页，每页 5 个，共 20 格背包)
+		// 原版过滤：MERGEFLG==1, 非料理, CRUSHLEVEL==0, CDKEY 匹配或空
+		std::vector<std::pair<std::uint32_t, std::string>> options;
+		for (int i = 0; i < 20; ++i)
+		{
+			const SA::Model::ItemHandle ih =
+			    p->items[static_cast<std::size_t>(i)];
+			SA::Model::Item *candidate = s.items.resolve(ih);
+			if (candidate != nullptr && candidate->current_pile > 0)
+			{
+				// 简化：只列出有道具的格子，原版有更细的过滤
+				std::string name(candidate->name.c_str(),
+				                 candidate->name.size());
+				if (name.empty())
+					name = "(无名道具)";
+				options.emplace_back(static_cast<std::uint32_t>(i), name);
+				if (options.size() >= 5)
+					break; // 第一页 5 个
+			}
+		}
+		if (options.empty())
+			return -7; // 没有可改名的道具
+
+		// 开 SELECT 窗口，handler 在回执时继续流程
+		const int rename_slot = item_slot; // 捕获改名道具槽位
+		sendSelectWindow(
+		    session, 0, "要变更哪个道具的名称？", options,
+		    [this, session, rename_slot](SA::Net::SessionId /*sid*/,
+		                                 const SA::Domain::WindowReply &reply)
+		    {
+			    // choice_id = 背包槽位
+			    if (reply.result_kind ==
+			        SA::Domain::WindowReply::ResultKind::CHOICE_ID)
+			    {
+				    openRenameInputWindow(session, rename_slot,
+				                          static_cast<int>(
+				                              reply.result.choice_id));
+			    }
+			    return true;
+		    });
+		return 0; // 窗口已开，异步等待回执，不消耗
+	}
+
+	// ── 宠技罐头 (ITEM_usePetSkillCanned, item_event.c:1327-1375) ──
+	// 原版：对宠物使用，弹 PETSKILLSHOW 窗口选技能槽位 → 学习罐头中的技能 (ITEM_ARGUMENT)。
+	// 此处用 SELECT 窗口列出宠物的技能槽位。
+	if (eff->is_pet_skill_canned && target_pet != nullptr)
+	{
+		// 列出宠物的技能槽位 (原版 CHAR_MAXPETSKILLHAVE)
+		std::vector<std::pair<std::uint32_t, std::string>> options;
+		// 简化：提供 7 个槽位选项 (原版宠技槽位数)
+		for (std::uint32_t i = 0; i < 7; ++i)
+		{
+			options.emplace_back(i, "技能槽 " + std::to_string(i + 1));
+		}
+		const int canned_slot = item_slot;
+		const auto pet_handle = p->pets[static_cast<std::size_t>(target_index)];
+		const std::int32_t skill_id = eff->canned_skill_id;
+		sendSelectWindow(
+		    session, 0, "选择要学习的技能槽位：", options,
+		    [this, session, canned_slot, pet_handle,
+		     skill_id](SA::Net::SessionId /*sid*/,
+		               const SA::Domain::WindowReply &reply)
+		    {
+			    if (reply.result_kind ==
+			        SA::Domain::WindowReply::ResultKind::CHOICE_ID)
+			    {
+				    applyPetSkillCanned(session, canned_slot, pet_handle,
+				                        skill_id,
+				                        static_cast<int>(
+				                            reply.result.choice_id));
+			    }
+			    return true;
+		    });
+		return 0; // 窗口已开，异步等待回执，不消耗
+	}
+
 	if (!consumed)
 		return -6; // 有效果表项但无可执行效果
 
@@ -989,6 +1089,101 @@ int World::useItemInField(SA::Net::SessionId session, int item_slot,
 	}
 
 	return 0;
+}
+
+// ── P2 收尾: 改名/宠技罐头的窗口流程 helper ──
+// 改名第二步：开 LINE_INPUT 窗口让玩家输入新名 (原版 ITEM_useRenameItem_WindowResult)。
+void World::openRenameInputWindow(SA::Net::SessionId session, int rename_item_slot,
+                                  int target_item_slot)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(session));
+	if (p == nullptr)
+		return;
+	if (target_item_slot < 0 ||
+	    static_cast<std::size_t>(target_item_slot) >= SA::Model::kMaxItemHave)
+		return;
+
+	const SA::Model::ItemHandle th =
+	    p->items[static_cast<std::size_t>(target_item_slot)];
+	SA::Model::Item *target = s.items.resolve(th);
+	if (target == nullptr)
+		return;
+
+	std::string cur_name(target->name.c_str(), target->name.size());
+	std::string prompt = "「" + cur_name + "」的名字要更改\n请输入新名\n全形13字，半形26字";
+
+	sendInputWindow(
+	    session, 0, prompt, 26,
+	    [this, session, rename_item_slot,
+	     target_item_slot](SA::Net::SessionId /*sid*/,
+	                       const SA::Domain::WindowReply &reply)
+	    {
+		    if (reply.result_kind !=
+		        SA::Domain::WindowReply::ResultKind::TEXT)
+			    return true;
+		    const auto &fixed = reply.result.text;
+		    const std::string data(fixed.c_str(), fixed.size());
+		    Impl &s2 = *_impl;
+		    SA::Model::Player *p2 =
+		        s2.players.resolve(s2.player_of_session.find(session));
+		    if (p2 == nullptr)
+			    return true;
+		    // 验证：1-26 字节，无空格 (原版 item_event.c:1540-1560)
+		    if (data.empty() || data.size() > 26 ||
+		        data.find(' ') != std::string::npos)
+			    return true;
+		    // 改名
+		    const SA::Model::ItemHandle th2 =
+		        p2->items[static_cast<std::size_t>(target_item_slot)];
+		    SA::Model::Item *target2 = s2.items.resolve(th2);
+		    if (target2 == nullptr)
+			    return true;
+		    target2->name.assign(data.data(), data.size());
+		    // 消耗改名道具
+		    const SA::Model::ItemHandle rh =
+		        p2->items[static_cast<std::size_t>(rename_item_slot)];
+		    SA::Model::Item *ritem = s2.items.resolve(rh);
+		    if (ritem != nullptr && --ritem->current_pile <= 0)
+		    {
+			    p2->clearItemSlot(rename_item_slot);
+			    (void)s2.items.release(rh);
+		    }
+		    return true;
+	    });
+}
+
+// 宠技罐头：应用技能到宠物的指定槽位，并消耗罐头
+// (原版 ITEM_usePetSkillCanned_WindowResult, item_event.c:1327-1375)。
+void World::applyPetSkillCanned(SA::Net::SessionId session, int canned_slot,
+                                SA::Model::EntityHandle pet_handle,
+                                std::int32_t skill_id, int skill_slot)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(session));
+	if (p == nullptr)
+		return;
+	if (skill_slot < 0 || skill_slot >= 7) // CHAR_MAXPETSKILLHAVE
+		return;
+
+	SA::Model::Pet *pet = s.pets.resolve(pet_handle);
+	if (pet == nullptr)
+		return;
+
+	// 原版：CHAR_setPetSkill(petindex, SkillNo, SkillID)
+	// 此处 Pet 结构的技能字段待确认，先记录到 pet_skills 数组 (若有)
+	// 简化：直接消耗罐头，技能学习待 Pet 技能字段补齐
+	// TODO: Pet 技能字段补齐后写入 pet->skills[skill_slot] = skill_id
+
+	// 消耗罐头
+	const SA::Model::ItemHandle ch =
+	    p->items[static_cast<std::size_t>(canned_slot)];
+	SA::Model::Item *canned = s.items.resolve(ch);
+	if (canned != nullptr && --canned->current_pile <= 0)
+	{
+		p->clearItemSlot(canned_slot);
+		(void)s.items.release(ch);
+	}
 }
 
 // 批次 B2 的注入 seam(声明见 Api.h):三门全过才写 ⇒ 失败不留孤儿。

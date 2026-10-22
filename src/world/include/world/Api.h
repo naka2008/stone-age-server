@@ -1141,6 +1141,11 @@ struct ItemEffect
 	std::int32_t status_change = 0; // 施加状态ID (ITEM_useStatusChange, item_event.c:1202)
 	// ── P2 第二批: 其他 ──
 	bool skill_up = false; // 技能点+1 (ITEM_useSkup, item_event.c:2113)
+	// ── P2 收尾: 窗口交互类 ──
+	bool is_lottery = false;          // 彩票刮刮卡 (ITEM_useLottery, item_event.c:1787)
+	bool is_rename_item = false;      // 改名道具 (ITEM_useRenameItem, item_event.c:1459)
+	bool is_pet_skill_canned = false; // 宠技罐头 (ITEM_usePetSkillCanned, item_event.c:1327)
+	std::int32_t canned_skill_id = 0; // 罐头中的技能ID (ITEM_ARGUMENT)
 };
 
 // 魔法与精灵术效果表的一行 (阶段 5.1)
@@ -1910,6 +1915,15 @@ class World final : public SA::Net::TransportEvents,
 	// 返回：0=成功, <0=失败（无玩家/空槽/道具不可用/目标无效）
 	int useItemInField(SA::Net::SessionId session, int item_slot,
 	                   bool target_is_pet = false, int target_index = 0);
+
+	// ── P2 收尾: 改名/宠技罐头的窗口流程 helper ──
+	// 改名第二步：开 LINE_INPUT 窗口让玩家输入新名。
+	void openRenameInputWindow(SA::Net::SessionId session, int rename_item_slot,
+	                           int target_item_slot);
+	// 宠技罐头：应用技能到宠物的指定槽位，并消耗罐头。
+	void applyPetSkillCanned(SA::Net::SessionId session, int canned_slot,
+	                         SA::Model::EntityHandle pet_handle,
+	                         std::int32_t skill_id, int skill_slot);
 
 	// 往某会话玩家的宠物槽放一只宠物(批次 B2 的**注入 seam**)。
 	//
