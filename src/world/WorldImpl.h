@@ -828,7 +828,7 @@ struct World::Impl : GoldAuditSink
 		std::array<std::int32_t, SA::Rules::kWeaponClassCount> weapon_mastery_level{};
 		std::array<std::int32_t, SA::Rules::kWeaponClassCount> weapon_mastery_exp{};
 	};
-	std::unordered_map<SA::Net::SessionId, PlayerExtraStats> player_extra_stats{};
+	std::map<SA::Net::SessionId, PlayerExtraStats> player_extra_stats{}; // ★ #52: 原 unordered_map 在测试中出现 0-bucket SIGFPE，改用 std::map 防崩 (无哈希取模)
 
 	struct PlayerTitleData
 	{
