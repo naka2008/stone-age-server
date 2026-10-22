@@ -313,6 +313,8 @@ struct ServerConfig
 	DemoBattleConfig demo_battle{};
 	// 01 §12:产物是**单一二进制**,--modules=... 决定装载哪些模块。
 	std::vector<std::string> modules{"world"};
+	// ★ Phase 2: demo.json 的 world.npcs 原始 JSON（main.cpp 解析后调 world.loadNpcEntities）
+	std::string world_npcs_json{};
 };
 
 struct ConfigError

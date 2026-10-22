@@ -199,7 +199,7 @@ ConfigResult parseConfig(std::string_view json_text)
 	rejectUnknownKeys(root, "",
 	                  {"listen_port", "bind_addr", "protocol_version",
 	                   "heartbeat_interval_ms", "rng_seed", "log_level", "tempo",
-	                   "modules", "demo_battle"},
+	                   "modules", "demo_battle", "world"},
 	                  r);
 
 	// ── listen_port ───────────────────────────────────────────
@@ -415,6 +415,48 @@ ConfigResult parseConfig(std::string_view json_text)
 			}
 			if (!bad)
 				cfg.modules = std::move(names);
+		}
+	}
+
+	// ── world.npcs（Phase 2：demo 测试 NPC）─────────────────────
+	//   存原始 JSON，main.cpp 解析后调 world.loadNpcEntities。
+	//   格式与 Content Bundle 的 world.npcs 一致（见 main.cpp configureContent）。
+	if (const json::Value *w = root.find("world"); w != nullptr)
+	{
+		if (!w->isObject())
+		{
+			addError(r, "world", "应为对象");
+		}
+		else
+		{
+			rejectUnknownKeys(*w, "world", {"npcs"}, r);
+			if (const json::Value *npcs = w->find("npcs"); npcs != nullptr)
+			{
+				if (!npcs->isArray())
+				{
+					addError(r, "world.npcs", "应为数组");
+				}
+				else
+				{
+					// 存原始 JSON 文本，main.cpp 再解析
+					std::ostringstream os;
+					os << "[";
+					const auto &arr = npcs->asArray();
+					for (std::size_t i = 0; i < arr.size(); ++i)
+					{
+						if (i > 0) os << ",";
+						// 简化：只支持基本字段，复杂嵌套后续再说
+						os << "{\"id\":" << static_cast<int>(arr[i].find("id")->asNumber())
+						   << ",\"x\":" << static_cast<int>(arr[i].find("x")->asNumber())
+						   << ",\"y\":" << static_cast<int>(arr[i].find("y")->asNumber())
+						   << ",\"type\":\"" << arr[i].find("type")->asString() << "\""
+						   << ",\"name\":\"" << arr[i].find("name")->asString() << "\""
+						   << "}";
+					}
+					os << "]";
+					cfg.world_npcs_json = os.str();
+				}
+			}
 		}
 	}
 

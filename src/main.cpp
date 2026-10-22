@@ -557,6 +557,28 @@ int main(int argc, char **argv)
 		std::fprintf(stdout, "Playable content ready: %s\n", content->version.c_str());
 	}
 
+	// ★ Phase 2: demo 测试 NPC（硬编码，3 个：治疗师/猜拳/飞机）
+	//   TODO: 从 demo.json 的 world.npcs 通用加载（JSON 序列化转义问题待修）
+	{
+		std::vector<SA::World::NpcEntity> npcs;
+		SA::World::NpcEntity n1{};
+		n1.id = 1001; n1.floor = 0; n1.x = 10; n1.y = 10; n1.dir = 0;
+		n1.type = SA::World::NpcType::kWindowHealer;
+		npcs.push_back(n1);
+		SA::World::NpcEntity n2{};
+		n2.id = 1002; n2.floor = 0; n2.x = 12; n2.y = 10; n2.dir = 0;
+		n2.type = SA::World::NpcType::kJanken;
+		npcs.push_back(n2);
+		SA::World::NpcEntity n3{};
+		n3.id = 1003; n3.floor = 0; n3.x = 14; n3.y = 10; n3.dir = 0;
+		n3.type = SA::World::NpcType::kAirplane;
+		npcs.push_back(n3);
+		world.loadNpcEntities(std::move(npcs));
+		logger.log(SA::Platform::LogLevel::kInfo,
+		           SA::Platform::LogEvent::kServerReady,
+		           {{"demo_npcs", static_cast<std::uint64_t>(3)}});
+	}
+
 	// 信号在 World 就位之后才挂:此前收到信号直接被默认动作杀掉即可,没有东西需要收尾。
 	std::signal(SIGINT, onStopSignal);
 	std::signal(SIGTERM, onStopSignal);
