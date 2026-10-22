@@ -91,6 +91,12 @@ sa_apply_warnings(sa_world_manor_test)
 sa_enable_assertions(sa_world_manor_test)
 add_test(NAME world_manor COMMAND sa_world_manor_test)
 
+add_executable(sa_world_npc_batch4_test WorldNpcBatch4Test.cpp)
+target_link_libraries(sa_world_npc_batch4_test PRIVATE sa_world sa_shared sa_doctest)
+sa_apply_warnings(sa_world_npc_batch4_test)
+sa_enable_assertions(sa_world_npc_batch4_test)
+add_test(NAME world_npc_batch4 COMMAND sa_world_npc_batch4_test)
+
 add_executable(sa_world_leaderboard_test WorldLeaderboardTest.cpp)
 target_link_libraries(sa_world_leaderboard_test PRIVATE sa_world sa_shared sa_doctest)
 sa_apply_warnings(sa_world_leaderboard_test)

@@ -296,6 +296,20 @@ void configureContent(SA::World::World &world, const SA::Content::Bundle &bundle
 					npc.type = SA::World::NpcType::kWarpMan;
 				else if (tstr == "ridemaster")
 					npc.type = SA::World::NpcType::kRideMaster;
+				else if (tstr == "windowhealer")
+					npc.type = SA::World::NpcType::kWindowHealer;
+				else if (tstr == "janken")
+					npc.type = SA::World::NpcType::kJanken;
+				else if (tstr == "airplane")
+					npc.type = SA::World::NpcType::kAirplane;
+				else if (tstr == "bodylan")
+					npc.type = SA::World::NpcType::kBodyLan;
+				else if (tstr == "checkman")
+					npc.type = SA::World::NpcType::kCheckMan;
+				else if (tstr == "windowman")
+					npc.type = SA::World::NpcType::kWindowman;
+				else if (tstr == "welfare")
+					npc.type = SA::World::NpcType::kWelfare;
 				else
 					npc.type = SA::World::NpcType::kOther;
 			}

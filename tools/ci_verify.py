@@ -99,6 +99,7 @@ EXPECTED_TESTS = {
     "world_profession",   # ★ 阶段 12 职业进阶与武器专精熟练度体系(进阶门禁/熟练度上限/相性共鸣)
     # ── 阶段 13(2026-10-04,四大庄园特权/金库分红与骑乘认证)────────────
     "world_manor",        # ★ 阶段 13 四大庄园骑乘进阶考核/金库税收分红与特权技能树
+    "world_npc_batch4",     # ★ P5-4 NPC 长尾第四批: WindowHealer/Janken/Airplane/BodyLan/CheckMan/Windowman/Welfare
     # ── 阶段 14(2026-10-04,全域排行榜与全服荣誉殿堂体系)──────────────
     "world_leaderboard",  # ★ 阶段 14 排行榜/名次排序/同分决胜/荣誉殿堂每日膜拜
     # ── 阶段 15(2026-10-04,S06 GM 管理员指令通道与个人银行存取系统)──────

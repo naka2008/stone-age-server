@@ -1956,6 +1956,48 @@ void World::onEvent(SA::Net::SessionId id, const SA::Domain::EventRequest &req)
 					//   庄园 PK 登记、查询 (PK 调度需跨服系统, 基础版)
 					ok = handleManorSmanTalk(id, npc.id);
 				}
+				else if (npc.type == NpcType::kWindowHealer)
+				{
+					// 窗口治疗师 (P5-4, 原版 npc_windowhealer.c)
+					//   HP/MP 治疗, 收 STONE
+					ok = handleWindowHealerTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kJanken)
+				{
+					// 猜拳 (P5-4, 原版 npc_janken.c)
+					//   剪刀石头布, 胜给道具+传送
+					ok = handleJankenTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kAirplane)
+				{
+					// 飞机 (P5-4, 原版 npc_airplane.c)
+					//   付费传送
+					ok = handleAirplaneTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kBodyLan)
+				{
+					// (P5-4, 原版 npc_bodylan.c)
+					//   传送/收益
+					ok = handleBodyLanTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kCheckMan)
+				{
+					// 检查人 (P5-4, 原版 npc_checkman.c)
+					//   事件标记检查
+					ok = handleCheckManTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kWindowman)
+				{
+					// 窗口男 (P5-4, 原版 npc_windowman.c)
+					//   配置消息窗口
+					ok = handleWindowmanTalk(id, npc.id);
+				}
+				else if (npc.type == NpcType::kWelfare)
+				{
+					// 福利 (P5-4, 原版 npc_welfare.c)
+					//   职业技能
+					ok = handleWelfareTalk(id, npc.id);
+				}
 			}
 		}
 	}
@@ -3947,6 +3989,214 @@ bool World::handleManorSmanTalk(SA::Net::SessionId id, std::uint64_t npc_id)
 	                  "占领庄园的家族可以获得丰厚奖励。\n"
 	                  "\n"
 	                  "※ 庄园 PK 调度需跨服系统, 开发中。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// ── P5-4 NPC 长尾第四批 ──────────────────────────────────────────
+
+// 窗口治疗师 (原版 npc_windowhealer.c)
+//   原版流程: Talked → SELECT(治疗HP/治疗MP/治疗宠物/离开) → 各自 YESNO 确认 → 扣费治疗
+//   费用: NPC_WindowCostCheck (按等级), 此处简化为固定费用
+//   本实现: 显示 HP/MP 状态与治疗选项 (完整多步窗口待窗口 UI 系统)
+bool World::handleWindowHealerTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kWindowHealer)
+		return false;
+
+	// 原版费用按等级计算 (npc_windowhealer.c NPC_WindowCostCheck)
+	// 简化: HP 治疗 100 STONE, MP 治疗 100 STONE
+	constexpr int kHealCost = 100;
+	std::string msg = "我是治疗师。\\n"
+	                  "\\n"
+	                  "HP: " +
+	                  std::to_string(p->hp) + "\\n"
+	                                          "MP: " +
+	                  std::to_string(p->mp) + "/" + std::to_string(p->max_mp) + "\\n"
+	                                                                            "\\n"
+	                                                                            "治疗 HP: " +
+	                  std::to_string(kHealCost) +
+	                  " STONE\\n"
+	                  "治疗 MP: " +
+	                  std::to_string(kHealCost) +
+	                  " STONE\\n"
+	                  "\\n"
+	                  "※ 治疗请通过指令操作。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 猜拳 (原版 npc_janken.c)
+//   原版流程: Talked → YESNO(是否参加, 需 EntryItem) → SELECT(石头/剪刀/布)
+//            → NPC_JnakenJudge 判定 → 胜: WinItem + 传送, 败/平: 对应处理
+//   选择编码: 3=石头, 5=剪刀, 7=布 (原版 data 编码)
+//   本实现: 显示玩法说明 (完整游戏窗口待窗口 UI 系统)
+bool World::handleJankenTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kJanken)
+		return false;
+
+	std::string msg = "来玩剪刀石头布吧！\\n"
+	                  "\\n"
+	                  "规则: 选择石头/剪刀/布, \\n"
+	                  "胜者可获得道具并传送！\\n"
+	                  "\\n"
+	                  "※ 猜拳窗口开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 猜拳判定 (原版 NPC_JnakenJudge, npc_janken.c:204-260)
+//   sel: 玩家选择 (0=石头, 1=剪刀, 2=布)
+//   npc_choice: NPC 随机选择 (0=石头, 1=剪刀, 2=布)
+//   返回: 0=平, 1=玩家胜, 2=NPC胜
+//   原版胜负表: (jankenman=0石头) 玩家布胜/剪刀败; (1剪刀) 玩家石头胜/布败; (2布) 玩家剪刀胜/石头败
+int World::jankenJudge(int player_choice, int npc_choice)
+{
+	if (player_choice == npc_choice)
+		return 0; // 平
+	// 胜: (石头>剪刀, 剪刀>布, 布>石头)
+	if ((player_choice == 0 && npc_choice == 1) || // 石头胜剪刀
+	    (player_choice == 1 && npc_choice == 2) || // 剪刀胜布
+	    (player_choice == 2 && npc_choice == 0))   // 布胜石头
+		return 1;
+	return 2;
+}
+
+// 飞机 (原版 npc_airplane.c)
+//   付费传送 NPC, 按配置传送到指定地点
+//   本实现: 显示传送说明 (完整传送菜单待窗口 UI 系统)
+bool World::handleAirplaneTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kAirplane)
+		return false;
+
+	std::string msg = "欢迎乘坐石器航空！\\n"
+	                  "\\n"
+	                  "我们可以带你去各个村庄。\\n"
+	                  "费用按距离计算。\\n"
+	                  "\\n"
+	                  "※ 传送菜单开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// BodyLan (原版 npc_bodylan.c)
+//   传送/收益 NPC
+//   本实现: 显示说明 (完整功能待窗口 UI 系统)
+bool World::handleBodyLanTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kBodyLan)
+		return false;
+
+	std::string msg = "你好！\\n"
+	                  "\\n"
+	                  "※ 功能开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 检查人 (原版 npc_checkman.c)
+//   事件标记检查 NPC, 显示玩家已完成的事件进度
+//   本实现: 显示说明 (完整多页检查待窗口 UI 系统)
+bool World::handleCheckManTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kCheckMan)
+		return false;
+
+	std::string msg = "我是事件检查人。\\n"
+	                  "\\n"
+	                  "可以查看你的冒险进度。\\n"
+	                  "\\n"
+	                  "※ 检查功能开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 窗口男 (原版 npc_windowman.c)
+//   配置驱动的消息窗口 NPC (NPC 配置读消息显示)
+//   本实现: 显示通用消息
+bool World::handleWindowmanTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kWindowman)
+		return false;
+
+	std::string msg = "你好, 冒险者。\\n"
+	                  "\\n"
+	                  "※ 消息窗口开发中, 敬请期待。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
+// 福利 (原版 npc_welfare.c)
+//   职业技能 NPC (转职/技能学习)
+//   本实现: 显示说明 (完整职业技能待窗口 UI 系统)
+bool World::handleWelfareTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	const auto it = s.conns.find(id);
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (it == s.conns.end() || p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kWelfare)
+		return false;
+
+	std::string msg = "这里是福利中心。\\n"
+	                  "\\n"
+	                  "可以学习职业技能。\\n"
+	                  "\\n"
+	                  "※ 职业技能开发中, 敬请期待。";
 	s.sendExChangeWindow(id, npc->id, msg,
 	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
 	return true;

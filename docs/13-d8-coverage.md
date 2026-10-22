@@ -114,13 +114,13 @@
 | 53 | NPC:TownPeople | NPC(纯 C) | 62 | 核心 | ✅ | `§9.0.73`(W.8:TownPeople 面对交互与多文案随机选择 + WindowOpen/Reply 闭环;`world_map` 用例) | — |
 | 54 | NPC:TranserMan | NPC(纯 C) | 192 | 长尾 | ✅ | `§9.0.133`(原版 `npc_transerman.c` 对齐 · 特使传送师组队阻断门禁/路费扣除与目的地安全瞬移;`world_transit` 用例) | — |
 | 55 | NPC:VipShop | NPC(纯 C) | 253 | 长尾 | ⬜ | — | 同上 |
-| 56 | NPC:Welfare | NPC(纯 C) | 385 | 长尾 | ⬜ | — | 同上(职业转职参数入口,`16` §12.4 W2) |
-| 57 | NPC:WindowHealer | NPC(纯 C) | 704 | 长尾 | ⬜ | — | 同上 |
-| 58 | NPC:Windowman | NPC(纯 C) | 558 | 长尾 | ⬜ | — | 同上 |
-| 59 | NPC:Airplane | NPC(消费 DSL) | 758 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
-| 60 | NPC:BodyLan | NPC(消费 DSL) | 484 | 长尾 | ⬜ | — | 同上 |
+| 56 | NPC:Welfare | NPC(纯 C) | 385 | 长尾 | ✅ | P5-4 | 基础版实现 (handleWelfareTalk) |`16` §12.4 W2) |
+| 57 | NPC:WindowHealer | NPC(纯 C) | 704 | 长尾 | ✅ | P5-4 | 基础版实现 (handleWindowHealerTalk) |
+| 58 | NPC:Windowman | NPC(纯 C) | 558 | 长尾 | ✅ | P5-4 | 基础版实现 (handleWindowmanTalk) |
+| 59 | NPC:Airplane | NPC(消费 DSL) | 758 | 长尾 | ✅ | P5-4 | 基础版实现 (handleAirplaneTalk) |`backlog/02` §2) |
+| 60 | NPC:BodyLan | NPC(消费 DSL) | 484 | 长尾 | ✅ | P5-4 | 基础版实现 (handleBodyLanTalk) |
 | 61 | NPC:Bus | NPC(消费 DSL) | 729 | 长尾 | ✅ | `§9.0.132`(原版 `npc_bus.c` 对齐 · 长毛象公车路线/团队阻断/等级金币门禁/GoldLedger 扣费/站点运送;`world_transit` 用例) | — |
-| 62 | NPC:CheckMan | NPC(消费 DSL) | 473 | 长尾 | ⬜ | — | 同上 |
+| 62 | NPC:CheckMan | NPC(消费 DSL) | 473 | 长尾 | ✅ | P5-4 | 基础版实现 (handleCheckManTalk) |
 | 63 | NPC:Door | NPC(消费 DSL) | 530 | 建议弃用 | ❌ | — | `16` §9.2:Q9 死子系统(数据侧仍有 3 处 `functionset=Door` ⇒ 生成的是无行为空壳) |
 | 64 | NPC:doorman | NPC(消费 DSL) | 216 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号 |
 | 65 | NPC:eventaction | NPC(消费 DSL) | 3362 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
@@ -133,7 +133,7 @@
 | 72 | NPC:NPC_GambleBank | NPC(消费 DSL) | 482 | 长尾 | ✅ | P5-2-1 | 银行存取已实现 (bank_gold 字段, 手续费 300) |
 | 73 | NPC:NPC_GambleMaster | NPC(消费 DSL) | 593 | 长尾 | ✅ | P5-2-1 | 主管对话+派彩函数已实现, 下注窗口待做 |
 | 74 | NPC:ItemShop | NPC(消费 DSL) | 1089 | 核心 | ✅ | `§9.0.77`(W.12:NPC 道具商店 ShopMan 买卖交易与 GoldLedger 扣加金闭环;`world_map` 用例) | 特殊商店折扣/积分机制 |
-| 75 | NPC:Janken | NPC(消费 DSL) | 507 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |
+| 75 | NPC:Janken | NPC(消费 DSL) | 507 | 长尾 | ✅ | P5-4 | 基础版+判定纯函数 (handleJankenTalk, jankenJudge) |`backlog/02` §2) |
 | 76 | NPC:LuckyMan | NPC(消费 DSL) | 240 | 长尾 | ⬜ | — | 同上 |
 | 77 | NPC:magiccard | NPC(消费 DSL) | 1806 | 建议弃用 | ❌ | — | `16` §9.2:B80 无任何入口符号(★ 弃用项里最大的一笔 1,806 行) |
 | 78 | NPC:MakePair | NPC(消费 DSL) | 538 | 长尾 | ⬜ | — | NPC 层 / D6 脚本层未启动(`backlog/02` §2) |

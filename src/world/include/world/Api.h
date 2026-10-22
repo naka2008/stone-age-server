@@ -772,6 +772,13 @@ enum class NpcType : std::uint8_t
 	kFmDengon = 31,       // 家族布告栏 (原版 npc_fmdengon.c: 家族留言板/成员列表)
 	kFmLetter = 32,       // 家族信使 (原版 npc_fmletter.c: 家族邮件)
 	kManorSman = 33,      // 庄园管理员 (原版 npc_manorsman.c: 庄园 PK 登记、查询)
+	kWindowHealer = 34,   // 窗口治疗师 (原版 npc_windowhealer.c: HP/MP 治疗, 收 STONE)
+	kJanken = 35,         // 猜拳 (原版 npc_janken.c: 剪刀石头布, 胜给道具+传送)
+	kAirplane = 36,       // 飞机 (原版 npc_airplane.c: 付费传送)
+	kBodyLan = 37,        // 身体栏? (原版 npc_bodylan.c: 传送/收益)
+	kCheckMan = 38,       // 检查人 (原版 npc_checkman.c: 事件标记检查)
+	kWindowman = 39,      // 窗口男 (原版 npc_windowman.c: 配置消息窗口)
+	kWelfare = 40,        // 福利 (原版 npc_welfare.c: 职业技能)
 };
 
 // 记录点数据 (阶段 16 NPC:SavePoint, 原版 npc_savepoint.c)
@@ -2225,6 +2232,22 @@ class World final : public SA::Net::TransportEvents,
 	// ── NPC 长尾第三批-2 (P5-3 NPC:ManorSman) ─────
 	//   原版 npc_manorsman.c (986 行): 庄园 PK 登记、查询
 	bool handleManorSmanTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+
+	// ── NPC 长尾第四批 (P5-4) ─────
+	//   原版 npc_windowhealer.c / npc_janken.c / npc_airplane.c / npc_bodylan.c
+	//   / npc_checkman.c / npc_windowman.c / npc_welfare.c
+	bool handleWindowHealerTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleJankenTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleAirplaneTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleBodyLanTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleCheckManTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleWindowmanTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+	bool handleWelfareTalk(SA::Net::SessionId id, std::uint64_t npc_id);
+
+	// 猜拳判定纯函数 (原版 NPC_JnakenJudge, npc_janken.c:204-260)
+	//   player_choice/npc_choice: 0=石头, 1=剪刀, 2=布
+	//   返回: 0=平, 1=玩家胜, 2=NPC胜
+	static int jankenJudge(int player_choice, int npc_choice);
 
 	// ── 地下城多层迷宫与漆黑洞窟视野探险系统 (阶段 18 §9.0.134, S20 地图运行时扩展) ─────
 	bool registerDungeon(const DungeonDefinition &dungeon);

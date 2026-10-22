@@ -12,5 +12,43 @@
   "demo_battle": {
     "enabled": true,
     "slot": 0
+  },
+
+  "world": {
+    "npcs": [
+      {
+        "id": 1001,
+        "floor": 0,
+        "x": 10,
+        "y": 10,
+        "dir": 0,
+        "image": 1,
+        "name": "治疗师",
+        "type": "windowhealer",
+        "message": "我是治疗师。"
+      },
+      {
+        "id": 1002,
+        "floor": 0,
+        "x": 12,
+        "y": 10,
+        "dir": 0,
+        "image": 1,
+        "name": "猜拳",
+        "type": "janken",
+        "message": "来玩剪刀石头布吧！"
+      },
+      {
+        "id": 1003,
+        "floor": 0,
+        "x": 14,
+        "y": 10,
+        "dir": 0,
+        "image": 1,
+        "name": "飞机",
+        "type": "airplane",
+        "message": "欢迎乘坐石器航空！"
+      }
+    ]
   }
 }
