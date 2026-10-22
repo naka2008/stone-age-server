@@ -3833,4 +3833,29 @@ bool World::handleFmLetterTalk(SA::Net::SessionId id, std::uint64_t npc_id)
 	return true;
 }
 
+bool World::handleManorSmanTalk(SA::Net::SessionId id, std::uint64_t npc_id)
+{
+	Impl &s = *_impl;
+	SA::Model::Player *p = s.players.resolve(s.player_of_session.find(id));
+	if (p == nullptr)
+		return false;
+
+	const NpcEntity *npc = findNpc(npc_id);
+	if (npc == nullptr || npc->type != NpcType::kManorSman)
+		return false;
+
+	// 庄园管理员 (P5-3, 原版 npc_manorsman.c:130-260 非 _NEW_MANOR_LAW 分支)
+	//   原版按 fmpks 调度状态分支 (FLAG_NONE/PREPARE/PEACE/BATTLEBEGIN),
+	//   完整 PK 调度 (报名/气势排名/定时开战/跨服比分) 需跨服系统, 此处基础版。
+	std::string msg = "这里是庄园管理员。\n"
+	                  "\n"
+	                  "庄园是家族的荣耀象征。\n"
+	                  "占领庄园的家族可以获得丰厚奖励。\n"
+	                  "\n"
+	                  "※ 庄园 PK 调度需跨服系统, 开发中。";
+	s.sendExChangeWindow(id, npc->id, msg,
+	                     static_cast<std::uint32_t>(SA::Domain::ButtonFlag::BUTTON_FLAG_OK));
+	return true;
+}
+
 } // namespace SA::World
