@@ -58,7 +58,8 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-latest,  name: 'Linux · GCC' }
-          - { os: macos-latest,   name: 'macOS · Apple clang' }
+          # ★ 2026-10-22 暂时注释:macOS runner 额度消耗太快,恢复时取消注释
+          # - { os: macos-latest,   name: 'macOS · Apple clang' }
           - { os: windows-latest, name: 'Windows · MSVC' }
 
     steps:
