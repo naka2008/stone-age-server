@@ -99,6 +99,12 @@ bool Session::handleFrame(const std::uint8_t *frame, std::uint32_t len,
 		return handleWalkRequest(env);
 	case SA::IDL::MsgId::EventRequest:
 		return handleEventRequest(env);
+	case SA::IDL::MsgId::AddressBookAddRequest:
+		return handleAddressBookAddRequest(env);
+	case SA::IDL::MsgId::TradeDirectRequest:
+		return handleTradeDirectRequest(env);
+	case SA::IDL::MsgId::ChatroomRequest:
+		return handleChatroomRequest(env);
 	case SA::IDL::MsgId::WindowReply:
 		return handleWindowReply(env);
 	default:
@@ -290,6 +296,39 @@ bool Session::handleEventRequest(const EnvelopeView &env)
 	//   回执 EventResult 由 world 侧经会话下推(靠 seqno 关联,同原版 EV_send),net 不管回执。
 	if (_host != nullptr)
 		_host->onEvent(_id, req);
+	return true;
+}
+
+bool Session::handleAddressBookAddRequest(const EnvelopeView &env)
+{
+	if (_state != SessionState::kOnline) return false;
+	SA::IDL::Reader r(env.body, env.body_len);
+	SA::Domain::AddressBookAddRequest req;
+	decode(r, req);
+	if (!r.ok()) return false;
+	// TODO: 实现名片交换逻辑（找面前玩家）
+	return true;
+}
+
+bool Session::handleTradeDirectRequest(const EnvelopeView &env)
+{
+	if (_state != SessionState::kOnline) return false;
+	SA::IDL::Reader r(env.body, env.body_len);
+	SA::Domain::TradeDirectRequest req;
+	decode(r, req);
+	if (!r.ok()) return false;
+	// TODO: 实现直接交易逻辑
+	return true;
+}
+
+bool Session::handleChatroomRequest(const EnvelopeView &env)
+{
+	if (_state != SessionState::kOnline) return false;
+	SA::IDL::Reader r(env.body, env.body_len);
+	SA::Domain::ChatroomRequest req;
+	decode(r, req);
+	if (!r.ok()) return false;
+	// TODO: 实现聊天室逻辑
 	return true;
 }
 

@@ -341,6 +341,9 @@ class Session
 	bool handleBattleCommand(const EnvelopeView &env);
 	bool handleWalkRequest(const EnvelopeView &env);
 	bool handleEventRequest(const EnvelopeView &env);
+	bool handleAddressBookAddRequest(const EnvelopeView &env);
+	bool handleTradeDirectRequest(const EnvelopeView &env);
+	bool handleChatroomRequest(const EnvelopeView &env);
 	bool handleWindowReply(const EnvelopeView &env);
 	bool handleLifecycle(const EnvelopeView &env);
 

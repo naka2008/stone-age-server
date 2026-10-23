@@ -144,6 +144,45 @@ inline void decode(SA::IDL::Reader& r, EventResult& m) {
   m.ok = r.b();
 }
 
+struct AddressBookAddRequest {
+  std::int32_t x;
+  std::int32_t y;
+};
+
+inline void encode(SA::IDL::Writer& w, const AddressBookAddRequest& m) {
+  w.i32(m.x);
+  w.i32(m.y);
+}
+
+inline void decode(SA::IDL::Reader& r, AddressBookAddRequest& m) {
+  m.x = r.i32();
+  m.y = r.i32();
+}
+
+struct TradeDirectRequest {
+  SA::IDL::FixedStr<64> data;
+};
+
+inline void encode(SA::IDL::Writer& w, const TradeDirectRequest& m) {
+  SA::IDL::write_str(w, m.data);
+}
+
+inline void decode(SA::IDL::Reader& r, TradeDirectRequest& m) {
+  SA::IDL::read_str(r, m.data);
+}
+
+struct ChatroomRequest {
+  SA::IDL::FixedStr<64> data;
+};
+
+inline void encode(SA::IDL::Writer& w, const ChatroomRequest& m) {
+  SA::IDL::write_str(w, m.data);
+}
+
+inline void decode(SA::IDL::Reader& r, ChatroomRequest& m) {
+  SA::IDL::read_str(r, m.data);
+}
+
 }  // namespace Domain
 }  // namespace SA
 

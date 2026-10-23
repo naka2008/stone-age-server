@@ -38,6 +38,9 @@ enum class MsgId : std::uint32_t {
   CharDisappear = 0x0304,
   EventRequest = 0x0305,
   EventResult = 0x0306,
+  AddressBookAddRequest = 0x0307,
+  TradeDirectRequest = 0x0308,
+  ChatroomRequest = 0x0309,
   WindowOpen = 0x0601,
   WindowReply = 0x0602,
 };
@@ -217,6 +220,24 @@ template <>
 struct MsgTraits<SA::Domain::EventResult> {
   static constexpr MsgId kId = MsgId::EventResult;
   static constexpr const char* kName = "sa.domain.EventResult";
+};
+
+template <>
+struct MsgTraits<SA::Domain::AddressBookAddRequest> {
+  static constexpr MsgId kId = MsgId::AddressBookAddRequest;
+  static constexpr const char* kName = "sa.domain.AddressBookAddRequest";
+};
+
+template <>
+struct MsgTraits<SA::Domain::TradeDirectRequest> {
+  static constexpr MsgId kId = MsgId::TradeDirectRequest;
+  static constexpr const char* kName = "sa.domain.TradeDirectRequest";
+};
+
+template <>
+struct MsgTraits<SA::Domain::ChatroomRequest> {
+  static constexpr MsgId kId = MsgId::ChatroomRequest;
+  static constexpr const char* kName = "sa.domain.ChatroomRequest";
 };
 
 template <>

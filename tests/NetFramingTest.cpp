@@ -454,6 +454,76 @@ TEST_CASE("事件请求(EV,0x0305)要求 kOnline,在世则解码转交宿主")
 	}
 }
 
+TEST_CASE("名片请求(AAB,0x0307)要求 kOnline,在世则解码通过")
+{
+	RecordingHost host;
+	Session s(7, kVersion, kHeartbeat, &host);
+	std::vector<std::uint8_t> out;
+	const std::vector<std::uint8_t> hs = handshakeFrame(kVersion);
+	REQUIRE(s.handleFrame(hs.data() + 4, static_cast<std::uint32_t>(hs.size() - 4), out));
+
+	SA::Domain::AddressBookAddRequest req{};
+	req.x = 10;
+	req.y = 20;
+	const std::vector<std::uint8_t> in = framed(0, req);
+
+	SUBCASE("仅已认证 ⇒ 拒绝")
+	{
+		CHECK_FALSE(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+	SUBCASE("在世 ⇒ 解码通过(0x0307 路由)")
+	{
+		s.markOnline();
+		CHECK(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+}
+
+TEST_CASE("直接交易请求(TD,0x0308)要求 kOnline,在世则解码通过")
+{
+	RecordingHost host;
+	Session s(7, kVersion, kHeartbeat, &host);
+	std::vector<std::uint8_t> out;
+	const std::vector<std::uint8_t> hs = handshakeFrame(kVersion);
+	REQUIRE(s.handleFrame(hs.data() + 4, static_cast<std::uint32_t>(hs.size() - 4), out));
+
+	SA::Domain::TradeDirectRequest req{};
+	req.data.assign("D|D");
+	const std::vector<std::uint8_t> in = framed(0, req);
+
+	SUBCASE("仅已认证 ⇒ 拒绝")
+	{
+		CHECK_FALSE(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+	SUBCASE("在世 ⇒ 解码通过(0x0308 路由)")
+	{
+		s.markOnline();
+		CHECK(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+}
+
+TEST_CASE("聊天室请求(0x0309)要求 kOnline,在世则解码通过")
+{
+	RecordingHost host;
+	Session s(7, kVersion, kHeartbeat, &host);
+	std::vector<std::uint8_t> out;
+	const std::vector<std::uint8_t> hs = handshakeFrame(kVersion);
+	REQUIRE(s.handleFrame(hs.data() + 4, static_cast<std::uint32_t>(hs.size() - 4), out));
+
+	SA::Domain::ChatroomRequest req{};
+	req.data.assign("B|");
+	const std::vector<std::uint8_t> in = framed(0, req);
+
+	SUBCASE("仅已认证 ⇒ 拒绝")
+	{
+		CHECK_FALSE(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+	SUBCASE("在世 ⇒ 解码通过(0x0309 路由)")
+	{
+		s.markOnline();
+		CHECK(s.handleFrame(in.data() + 4, static_cast<std::uint32_t>(in.size() - 4), out));
+	}
+}
+
 TEST_CASE("未知 msg_id ⇒ 协议违规,不是「忽略并继续」")
 {
 	RecordingHost host;

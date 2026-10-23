@@ -245,6 +245,7 @@
     }
   },
   "messages": {
+    "sa.domain.AddressBookAddRequest": 775,
     "sa.domain.BattleCommand": 528,
     "sa.domain.BattleEvents": 517,
     "sa.domain.BattleLeave": 516,
@@ -255,8 +256,10 @@
     "sa.domain.CharAppear": 770,
     "sa.domain.CharDisappear": 772,
     "sa.domain.CharMove": 771,
+    "sa.domain.ChatroomRequest": 777,
     "sa.domain.EventRequest": 773,
     "sa.domain.EventResult": 774,
+    "sa.domain.TradeDirectRequest": 776,
     "sa.domain.WalkRequest": 769,
     "sa.domain.WindowOpen": 1537,
     "sa.domain.WindowReply": 1538,

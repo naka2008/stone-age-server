@@ -111,3 +111,28 @@ message EventResult {
   uint32 seqno = 1;
   bool   ok    = 2;
 }
+
+// 名片交换请求(上行,原版 lssproto_AAB_send)。
+//   x, y = 玩家当前坐标，服务端据此找面前格的玩家发起名片交换。
+message AddressBookAddRequest {
+  option (sa.msg_id) = 0x0307;
+
+  sint32 x = 1;
+  sint32 y = 2;
+}
+
+// 直接交易请求(上行,原版 lssproto_TD_send)。
+//   data = 原版 TD 协议字符串（如 "D|D" 直接交易）。
+message TradeDirectRequest {
+  option (sa.msg_id) = 0x0308;
+
+  string data = 1 [(sa.max_len) = 64];
+}
+
+// 聊天室请求(上行,原版 lssproto_CHATROOM_send)。
+//   data = 原版 CHATROOM 协议字符串（如 "B|" 浏览）。
+message ChatroomRequest {
+  option (sa.msg_id) = 0x0309;
+
+  string data = 1 [(sa.max_len) = 64];
+}
